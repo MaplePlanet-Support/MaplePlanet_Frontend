@@ -5,6 +5,16 @@ export type ItemStat = {
   statPercent: number
 }
 
+export type ItemStatFull = {
+  flatStat: number
+  statPercent: number
+  flatAtk: number
+  atkPercent: number      // 공격력/마력% (잠재)
+  critRateBonus: number   // 크리티컬 확률% (잠재)
+  totalDmgPercent: number // 총 데미지%
+  bossDmgPercent: number  // 보스 공격 시 데미지%
+}
+
 export type StatCompareRequest = {
   baseStat: number
   equippedItems: ItemStat[]
@@ -26,22 +36,28 @@ export type WeaponType =
   | 'SPEAR' | 'POLEARM'
   | 'BOW' | 'CROSSBOW'
   | 'DAGGER' | 'CLAW' | 'KNUCKLE' | 'GUN'
+  | 'WAND' | 'STAFF'
 
 export const WEAPON_OPTIONS: { value: WeaponType; label: string }[] = [
-  { value: 'ONE_HAND_SWORD', label: '한손검 (4.0)' },
-  { value: 'ONE_HAND_AXE', label: '한손도끼 (4.4)' },
-  { value: 'ONE_HAND_BLUNT', label: '한손둔기 (4.4)' },
-  { value: 'TWO_HAND_SWORD', label: '두손검 (4.6)' },
-  { value: 'TWO_HAND_AXE', label: '두손도끼 (4.8)' },
-  { value: 'TWO_HAND_BLUNT', label: '두손둔기 (4.8)' },
-  { value: 'SPEAR', label: '창 (5.0)' },
-  { value: 'POLEARM', label: '폴암 (5.0)' },
-  { value: 'BOW', label: '활 (3.4)' },
-  { value: 'CROSSBOW', label: '석궁 (3.6)' },
-  { value: 'DAGGER', label: '단검 (3.6)' },
-  { value: 'CLAW', label: '아대 (3.8)' },
-  { value: 'KNUCKLE', label: '너클 (4.8)' },
-  { value: 'GUN', label: '건 (3.6)' },
+  { value: 'ONE_HAND_SWORD', label: '한손검' },
+  { value: 'ONE_HAND_AXE', label: '한손도끼' },
+  { value: 'ONE_HAND_BLUNT', label: '한손둔기' },
+  { value: 'TWO_HAND_SWORD', label: '두손검' },
+  { value: 'TWO_HAND_AXE', label: '두손도끼' },
+  { value: 'TWO_HAND_BLUNT', label: '두손둔기' },
+  { value: 'SPEAR', label: '창' },
+  { value: 'POLEARM', label: '폴암' },
+  { value: 'BOW', label: '활' },
+  { value: 'CROSSBOW', label: '석궁' },
+  { value: 'DAGGER', label: '단검' },
+  { value: 'CLAW', label: '아대' },
+  { value: 'KNUCKLE', label: '너클' },
+  { value: 'GUN', label: '건' },
+]
+
+export const MAGE_WEAPON_OPTIONS: { value: WeaponType; label: string }[] = [
+  { value: 'WAND', label: '완드' },
+  { value: 'STAFF', label: '스태프' },
 ]
 
 export type DamageCalcRequest = {
@@ -62,8 +78,44 @@ export type DamageCalcResponse = {
   damage: number
 }
 
+export type DamageCompareRequest = {
+  job: string
+  baseStat: number
+  subStat: number
+  weaponType: WeaponType
+  weaponAtk: number
+  atkPercent: number
+  blessingLevel: number
+  empressBlessingLevel: number
+  critRate: number
+  critDmgPP: number  // 크리티컬 시 추가 퍼뎀 %p (합연산)
+  skillPct: number   // 스킬 기본 퍼뎀 1타당 (ex: 럭키세븐 150)
+  equippedItems: ItemStatFull[]
+  currentSlotItem: ItemStatFull | null
+  itemA: ItemStatFull
+  itemB: ItemStatFull
+}
+
+export type DamageCompareResponse = {
+  statWithItemA: number
+  statWithItemB: number
+  damageWithItemA: number
+  damageWithItemB: number
+  magicWithItemA: number
+  magicWithItemB: number
+  expectedDmgWithItemA: number
+  expectedDmgWithItemB: number
+  statDifference: number
+  damageDifference: number
+  expectedDmgDiffPct: number
+  betterItem: 'A' | 'B' | 'SAME'
+}
+
 export const statCompare = (body: StatCompareRequest) =>
   api.post<StatCompareResponse>('/v1/calculator/stat-compare', body)
 
 export const calcDamage = (body: DamageCalcRequest) =>
   api.post<DamageCalcResponse>('/v1/calculator/damage', body)
+
+export const damageCompare = (body: DamageCompareRequest) =>
+  api.post<DamageCompareResponse>('/v1/calculator/damage-compare', body)
