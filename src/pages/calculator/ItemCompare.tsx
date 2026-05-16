@@ -18,21 +18,33 @@ const JOB_STAT: Record<string, string> = {
 const JOB_SUB: Record<string, string> = {
   전사: 'DEX', 마법사: 'LUK', 궁수: 'STR', 도적: 'DEX', '해적(바이퍼)': 'DEX', '해적(캡틴)': 'STR',
 }
-const JOB_CRIT: Record<string, { critRate: number; critDmgPP: number; skillPct: number }> = {
-  전사:       { critRate: 5,  critDmgPP: 0,   skillPct: 100 },
-  마법사:     { critRate: 5,  critDmgPP: 0,   skillPct: 100 },
-  궁수:       { critRate: 5,  critDmgPP: 0,   skillPct: 100 },
-  도적:       { critRate: 50, critDmgPP: 100, skillPct: 150 },
-  '해적(바이퍼)': { critRate: 5, critDmgPP: 0, skillPct: 100 },
-  '해적(캡틴)':   { critRate: 5, critDmgPP: 0, skillPct: 100 },
+const JOB_CRIT: Record<string, { critRate: number; critDmgPP: number }> = {
+  전사:       { critRate: 5,  critDmgPP: 0 },
+  마법사:     { critRate: 5,  critDmgPP: 0 },
+  궁수:       { critRate: 5,  critDmgPP: 0 },
+  도적:       { critRate: 50, critDmgPP: 100 },
+  '해적(바이퍼)': { critRate: 5, critDmgPP: 0 },
+  '해적(캡틴)':   { critRate: 5, critDmgPP: 0 },
 }
+
+const JOB_DEFAULT_WEAPON: Record<string, WeaponType> = {
+  전사: 'TWO_HAND_SWORD',
+  마법사: 'STAFF',
+  궁수: 'BOW',
+  도적: 'CLAW',
+  '해적(바이퍼)': 'KNUCKLE',
+  '해적(캡틴)': 'GUN',
+}
+
+const weaponLabel = (value: WeaponType) =>
+  [...WEAPON_OPTIONS, ...MAGE_WEAPON_OPTIONS].find(o => o.value === value)?.label ?? value
 
 const JOB_SLOTS = ['모자', '한벌옷', '상의', '하의', '장갑', '신발', '무기', '방패']
 const COMMON_SLOTS = ['귀고리', '망토', '목걸이', '안경', '반지', '벨트', '훈장']
 const ALL_SLOTS = [...JOB_SLOTS, ...COMMON_SLOTS]
 
 const emptyFull = (): ItemStatFull => ({
-  flatStat: 0, statPercent: 0,
+  flatStat: 0, flatSubStat: 0, statPercent: 0,
   flatAtk: 0, atkPercent: 0,
   critRateBonus: 0, totalDmgPercent: 0, bossDmgPercent: 0,
 })
@@ -57,6 +69,19 @@ function NumInput({
   )
 }
 
+function levelValue(value: number, max: number) {
+  return Math.max(0, Math.min(max, value))
+}
+
+function BuffLabel({ icon, children }: { icon: string; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <img src={`/buffs/${icon}`} alt="" className="h-5 w-5" />
+      {children}
+    </span>
+  )
+}
+
 export default function ItemCompare() {
   const [mode, setMode] = useState<Mode>(1)
   const [job, setJob] = useState('궁수')
@@ -67,9 +92,14 @@ export default function ItemCompare() {
   const [atkPercent, setAtkPercent] = useState(0)
   const [blessingLevel, setBlessingLevel] = useState(0)
   const [empressBlessingLevel, setEmPressBlessingLevel] = useState(0)
+  const [mapleWarriorLevel, setMapleWarriorLevel] = useState(0)
+  const [meditationLevel, setMeditationLevel] = useState(0)
+  const [rageLevel, setRageLevel] = useState(0)
+  const [sharpEyesLevel, setSharpEyesLevel] = useState(0)
+  const [decentSharpEyes, setDecentSharpEyes] = useState(false)
+  const [babyDragonFood, setBabyDragonFood] = useState(false)
   const [critRate, setCritRate] = useState(5)
   const [critDmgPP, setCritDmgPP] = useState(0)
-  const [skillPct, setSkillPct] = useState(100)
   const [useOverall, setUseOverall] = useState(false)
   const [slots, setSlots] = useState<Record<string, ItemStatFull>>(
     Object.fromEntries(ALL_SLOTS.map(s => [s, emptyFull()]))
@@ -94,8 +124,7 @@ export default function ItemCompare() {
     const d = JOB_CRIT[job]
     setCritRate(d.critRate)
     setCritDmgPP(d.critDmgPP)
-    setSkillPct(d.skillPct)
-    setWeaponType(isMage ? 'WAND' : 'BOW')
+    setWeaponType(JOB_DEFAULT_WEAPON[job])
   }, [job])
 
   const getActiveSlots = useCallback(
@@ -123,6 +152,28 @@ export default function ItemCompare() {
     setSlots(prev => ({ ...prev, [name]: { ...prev[name], [field]: value } }))
   }
 
+  function setSharpEyesLevelSafe(value: number) {
+    const next = levelValue(value, 30)
+    setSharpEyesLevel(next)
+    if (next > 0) setDecentSharpEyes(false)
+  }
+
+  function setDecentSharpEyesSafe(checked: boolean) {
+    setDecentSharpEyes(checked)
+    if (checked) setSharpEyesLevel(0)
+  }
+
+  function setRageLevelSafe(value: number) {
+    const next = levelValue(value, 20)
+    setRageLevel(next)
+    if (next > 0) setBabyDragonFood(false)
+  }
+
+  function setBabyDragonFoodSafe(checked: boolean) {
+    setBabyDragonFood(checked)
+    if (checked) setRageLevel(0)
+  }
+
   const calculate = useCallback(async () => {
     if (baseStat <= 0) { setResult(null); return }
     const activeSlots = getActiveSlots()
@@ -130,6 +181,9 @@ export default function ItemCompare() {
     try {
       const equippedFull = activeSlots.map(s => slots[s])
       const currentSlotFull = compareSlot ? slots[compareSlot] : null
+      const sanitizeFull = (item: ItemStatFull, isWeapon: boolean): ItemStatFull => isWeapon
+        ? item
+        : { ...item, flatAtk: 0, atkPercent: 0, critRateBonus: 0, totalDmgPercent: 0, bossDmgPercent: 0 }
 
       if (mode === 1) {
         const toBasic = (item: ItemStatFull): ItemStat => ({
@@ -144,12 +198,20 @@ export default function ItemCompare() {
         })
         setResult(res)
       } else {
+        const equippedDamage = activeSlots.map(s => sanitizeFull(slots[s], s === '무기'))
+        const currentDamage = compareSlot ? sanitizeFull(slots[compareSlot], compareSlot === '무기') : null
+        const itemADamage = sanitizeFull(itemA, compareSlot === '무기')
+        const itemBDamage = sanitizeFull(itemB, compareSlot === '무기')
         const res = await damageCompare({
           job, baseStat, subStat, weaponType, weaponAtk, atkPercent,
-          blessingLevel, empressBlessingLevel, critRate, critDmgPP, skillPct,
-          equippedItems: equippedFull,
-          currentSlotItem: currentSlotFull,
-          itemA, itemB,
+          blessingLevel, empressBlessingLevel,
+          mapleWarriorLevel, meditationLevel, rageLevel,
+          sharpEyesLevel, decentSharpEyes, babyDragonFood,
+          critRate, critDmgPP,
+          equippedItems: equippedDamage,
+          currentSlotItem: currentDamage,
+          itemA: itemADamage,
+          itemB: itemBDamage,
         })
         setResult(res)
       }
@@ -160,7 +222,10 @@ export default function ItemCompare() {
     }
   }, [
     mode, job, baseStat, subStat, weaponType, weaponAtk, atkPercent,
-    blessingLevel, empressBlessingLevel, critRate, critDmgPP, skillPct,
+    blessingLevel, empressBlessingLevel,
+    mapleWarriorLevel, meditationLevel, rageLevel,
+    sharpEyesLevel, decentSharpEyes, babyDragonFood,
+    critRate, critDmgPP,
     useOverall, slots, compareSlot, itemA, itemB, getActiveSlots,
   ])
 
@@ -174,7 +239,10 @@ export default function ItemCompare() {
     try {
       const config: PresetConfig = {
         job, mode, baseStat, subStat, weaponType, weaponAtk, atkPercent,
-        blessingLevel, empressBlessingLevel, critRate, critDmgPP, skillPct,
+        blessingLevel, empressBlessingLevel,
+        mapleWarriorLevel, meditationLevel, rageLevel,
+        sharpEyesLevel, decentSharpEyes, babyDragonFood,
+        critRate, critDmgPP,
         useOverall, slots, compareSlot, itemA, itemB,
       }
       const res = await savePreset({ nickname: nickname.trim(), password: password || undefined, config })
@@ -192,9 +260,16 @@ export default function ItemCompare() {
       setJob(c.job); setMode(c.mode); setBaseStat(c.baseStat); setSubStat(c.subStat)
       setWeaponType(c.weaponType); setWeaponAtk(c.weaponAtk); setAtkPercent(c.atkPercent)
       setBlessingLevel(c.blessingLevel); setEmPressBlessingLevel(c.empressBlessingLevel)
+      setMapleWarriorLevel(c.mapleWarriorLevel ?? 0)
+      setMeditationLevel(c.meditationLevel ?? 0)
+      const loadedRageLevel = c.rageLevel ?? 0
+      const loadedSharpLevel = c.sharpEyesLevel ?? 0
+      setRageLevel(loadedRageLevel)
+      setSharpEyesLevel(loadedSharpLevel)
+      setDecentSharpEyes(loadedSharpLevel > 0 ? false : c.decentSharpEyes ?? false)
+      setBabyDragonFood(loadedRageLevel > 0 ? false : c.babyDragonFood ?? false)
       if (c.critRate !== undefined) setCritRate(c.critRate)
       if (c.critDmgPP !== undefined) setCritDmgPP(c.critDmgPP)
-      if (c.skillPct !== undefined) setSkillPct(c.skillPct)
       setUseOverall(c.useOverall); setSlots(c.slots); setCompareSlot(c.compareSlot)
       setItemA(c.itemA); setItemB(c.itemB)
       setPresetMsg({ type: 'ok', text: `"${res.nickname}" 불러오기 완료!` })
@@ -225,30 +300,31 @@ export default function ItemCompare() {
 
   const jobSlotRows = getJobSlotRows()
   const activeSlots = getActiveSlots()
+  const isWeaponCompare = mode === 2 && compareSlot === '무기'
 
   return (
     <div
       className="text-left min-h-screen"
-      style={{ fontFamily: "'Pretendard Variable', 'Pretendard', system-ui, sans-serif", background: '#EDEBE6' }}
+      style={{ fontFamily: "'Pretendard Variable', 'Pretendard', system-ui, sans-serif", background: '#EEF2F7' }}
     >
       {/* Header */}
       <div className="bg-white border-b border-black/8 px-6 py-3 flex items-center gap-6">
         <div>
           <div className="text-[11px] text-muted-foreground tracking-widest uppercase">PlanetCompare</div>
-          <div className="text-lg font-semibold text-foreground leading-tight">아이템 비교기</div>
+          <div className="text-lg font-semibold text-foreground leading-tight">아이템 비교</div>
         </div>
         <Tabs value={String(mode)} onValueChange={v => setMode(Number(v) as Mode)}>
           <TabsList>
             <TabsTrigger value="1">단순 스탯 비교</TabsTrigger>
-            <TabsTrigger value="2">정밀 스공 비교</TabsTrigger>
+            <TabsTrigger value="2">스공&실제 데미지 비교</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
-      <div className="p-4 grid grid-cols-[1fr_340px] gap-4 items-start">
+      <div className="grid grid-cols-1 gap-4 p-3 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-4 lg:items-start">
 
         {/* ── LEFT ── */}
-        <div className="bg-white rounded-xl border border-black/8 shadow-sm p-6 flex flex-col gap-6">
+        <div className="bg-white rounded-xl border border-black/8 shadow-sm p-3 sm:p-6 flex flex-col gap-6">
 
           {/* 캐릭터 */}
           <section>
@@ -259,7 +335,7 @@ export default function ItemCompare() {
             <div className="flex flex-wrap gap-4 items-end">
               <div className="flex flex-col gap-1">
                 <Label className="text-xs">직업</Label>
-                <Select value={job} onValueChange={setJob}>
+                <Select value={job} onValueChange={v => v && setJob(v)}>
                   <SelectTrigger className="h-8 w-36 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.keys(JOB_STAT).map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
@@ -284,10 +360,6 @@ export default function ItemCompare() {
                     <Label className="text-xs">크리 추가퍼뎀 (%p)</Label>
                     <NumInput value={critDmgPP} onChange={setCritDmgPP} width={72} />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">스킬 퍼뎀 (%p)</Label>
-                    <NumInput value={skillPct} onChange={setSkillPct} width={64} />
-                  </div>
                 </>
               )}
             </div>
@@ -306,7 +378,7 @@ export default function ItemCompare() {
               </label>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col gap-4 xl:flex-row">
               <div className="flex-1 min-w-0">
                 <div className="text-[11px] font-medium text-muted-foreground mb-1">직업 부위</div>
                 <table className="w-full border-collapse">
@@ -316,7 +388,7 @@ export default function ItemCompare() {
                       <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
                       <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">깡 {statLabel}</th>
                       {mode === 2 && (
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">깡 {subLabel}</th>
                       )}
                     </tr>
                   </thead>
@@ -332,11 +404,7 @@ export default function ItemCompare() {
                         </td>
                         {mode === 2 && (
                           <td className="border border-border px-1 py-0.5 text-center">
-                            {!isMage && s === '장갑' ? (
-                              <NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} />
-                            ) : (
-                              <span className="text-xs text-muted-foreground/30">—</span>
-                            )}
+                            <NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} />
                           </td>
                         )}
                       </tr>
@@ -354,7 +422,7 @@ export default function ItemCompare() {
                       <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
                       <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">깡 {statLabel}</th>
                       {mode === 2 && (
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">깡 {subLabel}</th>
                       )}
                     </tr>
                   </thead>
@@ -370,11 +438,7 @@ export default function ItemCompare() {
                         </td>
                         {mode === 2 && (
                           <td className="border border-border px-1 py-0.5 text-center">
-                            {isMage && s === '귀고리' ? (
-                              <NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} />
-                            ) : (
-                              <span className="text-xs text-muted-foreground/30">—</span>
-                            )}
+                            <NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} />
                           </td>
                         )}
                       </tr>
@@ -385,32 +449,27 @@ export default function ItemCompare() {
             </div>
 
             {mode === 2 && (
-              <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-4 items-end">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">무기 종류</Label>
-                  <Select value={weaponType} onValueChange={v => setWeaponType(v as WeaponType)}>
-                    <SelectTrigger className="h-8 w-28 text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {weaponOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+              <div className="mt-4 pt-4 border-t border-border flex flex-col gap-4">
+                <div className="flex flex-wrap gap-4 items-end">
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">무기 종류</Label>
+                    <Select value={weaponType} onValueChange={v => setWeaponType(v as WeaponType)}>
+                      <SelectTrigger className="h-8 w-28 text-sm"><SelectValue>{weaponLabel(weaponType)}</SelectValue></SelectTrigger>
+                      <SelectContent>
+                        {weaponOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">{isMage ? '무기 마력' : '무기 공격력'}</Label>
+                    <NumInput value={weaponAtk} onChange={setWeaponAtk} width={76} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">{atkColLabel}% (비교슬롯 제외)</Label>
+                    <NumInput value={atkPercent} onChange={setAtkPercent} width={84} />
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">{isMage ? '무기 마력' : '무기 공격력'}</Label>
-                  <NumInput value={weaponAtk} onChange={setWeaponAtk} width={76} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">{atkColLabel}% (비교슬롯 제외)</Label>
-                  <NumInput value={atkPercent} onChange={setAtkPercent} width={84} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">정령의 축복</Label>
-                  <NumInput value={blessingLevel} onChange={setBlessingLevel} width={60} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">여제의 축복</Label>
-                  <NumInput value={empressBlessingLevel} onChange={setEmPressBlessingLevel} width={60} />
-                </div>
+
               </div>
             )}
           </section>
@@ -421,7 +480,7 @@ export default function ItemCompare() {
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">비교 아이템</div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">교체 슬롯</span>
-                <Select value={compareSlot} onValueChange={setCompareSlot}>
+                <Select value={compareSlot} onValueChange={v => setCompareSlot(v ?? '')}>
                   <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">빈 슬롯</SelectItem>
@@ -431,12 +490,13 @@ export default function ItemCompare() {
               </div>
               {compareSlot && (
                 <span className="text-[11px] text-muted-foreground">
-                  현재: {statLabel}% {slots[compareSlot].statPercent} / 깡 {slots[compareSlot].flatStat}
+                  현재: {statLabel}% {slots[compareSlot].statPercent} / 깡 {statLabel} {slots[compareSlot].flatStat}
+                  {mode === 2 && ` / 깡 ${subLabel} ${slots[compareSlot].flatSubStat}`}
                 </span>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {(['A', 'B'] as const).map(label => {
                 const item = label === 'A' ? itemA : itemB
                 const setItem = label === 'A' ? setItemA : setItemB
@@ -469,9 +529,15 @@ export default function ItemCompare() {
                         <Label className="text-[10px] text-muted-foreground">깡 {statLabel}</Label>
                         <NumInput value={item.flatStat} onChange={v => setItem({ ...item, flatStat: v })} />
                       </div>
+                      {mode === 2 && (
+                        <div className="flex flex-col gap-0.5">
+                          <Label className="text-[10px] text-muted-foreground">깡 {subLabel}</Label>
+                          <NumInput value={item.flatSubStat} onChange={v => setItem({ ...item, flatSubStat: v })} />
+                        </div>
+                      )}
                     </div>
 
-                    {mode === 2 && (
+                    {isWeaponCompare && (
                       <>
                         {/* 공격력/마력 행 */}
                         <div className="flex flex-wrap gap-x-3 gap-y-1.5">
@@ -508,13 +574,11 @@ export default function ItemCompare() {
           </section>
         </div>
 
-        {/* ── RIGHT: 실시간 결과 ── */}
-        <div className="bg-white rounded-xl border border-black/8 shadow-sm p-5 sticky top-[60px] flex flex-col gap-4 h-fit">
+        {/* ── RIGHT: 아이템 비교 결과 ── */}
+        <div className="bg-white rounded-xl border border-black/8 shadow-sm p-4 sm:p-5 lg:sticky lg:top-[72px] flex flex-col gap-4 h-fit">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">실시간 결과</span>
-            <span className={`text-[11px] px-2 py-0.5 rounded-full border ${calculating ? 'border-border text-muted-foreground' : 'border-maple/40 text-maple'}`}>
-              {calculating ? '계산 중…' : '● 라이브'}
-            </span>
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">아이템 비교 결과</span>
+            {calculating && <span className="text-[11px] text-muted-foreground">계산 중…</span>}
           </div>
 
           {result === null ? (
@@ -540,7 +604,7 @@ export default function ItemCompare() {
                       </div>
                       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-300"
-                          style={{ width: `${val !== null ? (val / maxStat) * 100 : 0}%`, background: isWin ? '#E26B2C' : '#d1d5db' }} />
+                          style={{ width: `${val !== null ? (val / maxStat) * 100 : 0}%`, background: isWin ? '#2563EB' : '#d1d5db' }} />
                       </div>
                     </div>
                   )
@@ -582,7 +646,7 @@ export default function ItemCompare() {
                             </div>
                             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                               <div className="h-full rounded-full transition-all duration-300"
-                                style={{ width: `${(val / maxMagic) * 100}%`, background: isWin ? '#E26B2C' : '#d1d5db' }} />
+                                style={{ width: `${(val / maxMagic) * 100}%`, background: isWin ? '#2563EB' : '#d1d5db' }} />
                             </div>
                           </div>
                         )
@@ -608,7 +672,7 @@ export default function ItemCompare() {
                             </div>
                             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                               <div className="h-full rounded-full transition-all duration-300"
-                                style={{ width: `${(dmg / maxDmg) * 100}%`, background: isWin ? '#E26B2C' : '#d1d5db' }} />
+                                style={{ width: `${(dmg / maxDmg) * 100}%`, background: isWin ? '#2563EB' : '#d1d5db' }} />
                             </div>
                           </div>
                         )
@@ -634,7 +698,7 @@ export default function ItemCompare() {
                             </div>
                             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                               <div className="h-full rounded-full transition-all duration-300"
-                                style={{ width: `${(val / maxExp) * 100}%`, background: isWin ? '#E26B2C' : '#d1d5db' }} />
+                                style={{ width: `${(val / maxExp) * 100}%`, background: isWin ? '#2563EB' : '#d1d5db' }} />
                             </div>
                           </div>
                         )
@@ -650,6 +714,66 @@ export default function ItemCompare() {
                 </>
               )}
             </>
+          )}
+
+          {mode === 2 && (
+            <div className="border-t border-border pt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">스킬</div>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs"><BuffLabel icon="정령의축복.png">정령의 축복</BuffLabel></Label>
+                    <button type="button" onClick={() => setBlessingLevel(20)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
+                  </div>
+                  <NumInput value={blessingLevel} onChange={v => setBlessingLevel(levelValue(v, 20))} width={60} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs"><BuffLabel icon="여신의축복.png">여신의 축복</BuffLabel></Label>
+                    <button type="button" onClick={() => setEmPressBlessingLevel(12)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
+                  </div>
+                  <NumInput value={empressBlessingLevel} onChange={v => setEmPressBlessingLevel(levelValue(v, 12))} width={60} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs"><BuffLabel icon="메이플용사.png">메용</BuffLabel></Label>
+                    <button type="button" onClick={() => setMapleWarriorLevel(30)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
+                  </div>
+                  <NumInput value={mapleWarriorLevel} onChange={v => setMapleWarriorLevel(levelValue(v, 30))} width={60} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs"><BuffLabel icon="메디테이션.png">메디테이션</BuffLabel></Label>
+                    <button type="button" onClick={() => setMeditationLevel(20)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
+                  </div>
+                  <NumInput value={meditationLevel} onChange={v => setMeditationLevel(levelValue(v, 20))} width={60} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs"><BuffLabel icon="분노.png">분노</BuffLabel></Label>
+                    <button type="button" onClick={() => setRageLevelSafe(20)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
+                  </div>
+                  <NumInput value={rageLevel} onChange={setRageLevelSafe} width={60} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs"><BuffLabel icon="샤프아이즈.png">샤프아이즈</BuffLabel></Label>
+                    <button type="button" onClick={() => setSharpEyesLevelSafe(30)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
+                  </div>
+                  <NumInput value={sharpEyesLevel} onChange={setSharpEyesLevelSafe} width={60} />
+                </div>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                  <input type="checkbox" checked={decentSharpEyes} onChange={e => setDecentSharpEyesSafe(e.target.checked)} />
+                  <BuffLabel icon="샤프아이즈.png">쓸샾</BuffLabel>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                  <input type="checkbox" checked={babyDragonFood} onChange={e => setBabyDragonFoodSafe(e.target.checked)} />
+                  <BuffLabel icon="아기용의 이유식.png">아기용의 이유식</BuffLabel>
+                </label>
+              </div>
+            </div>
           )}
 
           {/* 프리셋 */}

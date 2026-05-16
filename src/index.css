@@ -118,11 +118,10 @@
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
+  width: min(1480px, 100%);
   margin: 0 auto;
   text-align: center;
-  border-inline: 1px solid var(--border);
+  position: relative;
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -182,10 +181,10 @@ code {
   --font-sans: 'Geist Variable', sans-serif;
   --font-pretendard: 'Pretendard Variable', 'Pretendard', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --color-maple: #E26B2C;
-  --color-maple-bg: #FEF3EB;
-  --color-win: #16A34A;
-  --color-win-bg: #F0FDF4;
+  --color-maple: #2563EB;
+  --color-maple-bg: #EFF6FF;
+  --color-win: #059669;
+  --color-win-bg: #ECFDF5;
   --color-lose: #DC2626;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);

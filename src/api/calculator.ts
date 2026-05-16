@@ -7,6 +7,7 @@ export type ItemStat = {
 
 export type ItemStatFull = {
   flatStat: number
+  flatSubStat: number
   statPercent: number
   flatAtk: number
   atkPercent: number      // 공격력/마력% (잠재)
@@ -69,12 +70,24 @@ export type DamageCalcRequest = {
   atkPercent: number
   blessingLevel: number
   empressBlessingLevel: number
+  mapleWarriorLevel: number
+  meditationLevel: number
+  rageLevel: number
+  sharpEyesLevel: number
+  decentSharpEyes: boolean
+  babyDragonFood: boolean
 }
 
 export type DamageCalcResponse = {
   blessingAtk: number
   empressBlessingAtk: number
+  buffAtk: number
+  buffMagic: number
+  mapleWarriorStat: number
+  critRate: number
+  critDmgPP: number
   totalAtk: number
+  totalMagic: number
   damage: number
 }
 
@@ -87,9 +100,14 @@ export type DamageCompareRequest = {
   atkPercent: number
   blessingLevel: number
   empressBlessingLevel: number
+  mapleWarriorLevel: number
+  meditationLevel: number
+  rageLevel: number
+  sharpEyesLevel: number
+  decentSharpEyes: boolean
+  babyDragonFood: boolean
   critRate: number
   critDmgPP: number  // 크리티컬 시 추가 퍼뎀 %p (합연산)
-  skillPct: number   // 스킬 기본 퍼뎀 1타당 (ex: 럭키세븐 150)
   equippedItems: ItemStatFull[]
   currentSlotItem: ItemStatFull | null
   itemA: ItemStatFull

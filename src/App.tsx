@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Layout from '@/components/layout/Layout'
-import Home from '@/pages/Home'
 import StatCalculator from '@/pages/calculator/StatCalculator'
 import DamageCalculator from '@/pages/calculator/DamageCalculator'
 import ItemCompare from '@/pages/calculator/ItemCompare'
@@ -13,7 +12,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
+          <Route index element={<ItemCompare />} />
           <Route path="calculator" element={<StatCalculator />} />
           <Route path="calculator/damage" element={<DamageCalculator />} />
           <Route path="compare" element={<ItemCompare />} />
