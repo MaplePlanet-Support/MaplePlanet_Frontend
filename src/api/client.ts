@@ -5,7 +5,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   })
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => null)
+    throw new Error(errBody?.message ?? `${res.status} ${res.statusText}`)
+  }
   return res.json() as Promise<T>
 }
 
