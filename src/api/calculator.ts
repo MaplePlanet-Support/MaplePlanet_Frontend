@@ -9,6 +9,7 @@ export type ItemStatFull = {
   flatStat: number
   flatSubStat: number
   statPercent: number
+  allStatPercent: number  // 올스탯%
   flatAtk: number
   atkPercent: number      // 공격력/마력% (잠재)
   critRateBonus: number   // 크리티컬 확률% (잠재)
