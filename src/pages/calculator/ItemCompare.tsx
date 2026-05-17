@@ -19,12 +19,12 @@ const JOB_SUB: Record<string, string> = {
   전사: 'DEX', 마법사: 'LUK', 궁수: 'STR', 도적: 'DEX', '해적(바이퍼)': 'DEX', '해적(캡틴)': 'STR',
 }
 const JOB_CRIT: Record<string, { critRate: number; critDmgPP: number }> = {
-  전사:       { critRate: 5,  critDmgPP: 0 },
-  마법사:     { critRate: 5,  critDmgPP: 0 },
-  궁수:       { critRate: 5,  critDmgPP: 0 },
-  도적:       { critRate: 50, critDmgPP: 100 },
-  '해적(바이퍼)': { critRate: 5, critDmgPP: 0 },
-  '해적(캡틴)':   { critRate: 5, critDmgPP: 0 },
+  전사:       { critRate: 0,  critDmgPP: 0 },
+  마법사:     { critRate: 0,  critDmgPP: 0 },
+  궁수:       { critRate: 40, critDmgPP: 200 },
+  도적:       { critRate: 50, critDmgPP: 150 },
+  '해적(바이퍼)': { critRate: 0, critDmgPP: 0 },
+  '해적(캡틴)':   { critRate: 0, critDmgPP: 0 },
 }
 
 const JOB_DEFAULT_WEAPON: Record<string, WeaponType> = {
@@ -84,10 +84,10 @@ function BuffLabel({ icon, children }: { icon: string; children: React.ReactNode
 
 export default function ItemCompare() {
   const [mode, setMode] = useState<Mode>(1)
-  const [job, setJob] = useState('궁수')
+  const [job, setJob] = useState('전사')
   const [baseStat, setBaseStat] = useState(0)
   const [subStat, setSubStat] = useState(0)
-  const [weaponType, setWeaponType] = useState<WeaponType>('BOW')
+  const [weaponType, setWeaponType] = useState<WeaponType>('TWO_HAND_SWORD')
   const [weaponAtk, setWeaponAtk] = useState(0)
   const [atkPercent, setAtkPercent] = useState(0)
   const [blessingLevel, setBlessingLevel] = useState(0)
@@ -98,7 +98,7 @@ export default function ItemCompare() {
   const [sharpEyesLevel, setSharpEyesLevel] = useState(0)
   const [decentSharpEyes, setDecentSharpEyes] = useState(false)
   const [babyDragonFood, setBabyDragonFood] = useState(false)
-  const [critRate, setCritRate] = useState(5)
+  const [critRate, setCritRate] = useState(0)
   const [critDmgPP, setCritDmgPP] = useState(0)
   const [useOverall, setUseOverall] = useState(false)
   const [slots, setSlots] = useState<Record<string, ItemStatFull>>(
@@ -111,7 +111,6 @@ export default function ItemCompare() {
   const [calculating, setCalculating] = useState(false)
 
   const [nickname, setNickname] = useState('')
-  const [password, setPassword] = useState('')
   const [presetMsg, setPresetMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
   const isMage = job === '마법사'
@@ -245,17 +244,17 @@ export default function ItemCompare() {
         critRate, critDmgPP,
         useOverall, slots, compareSlot, itemA, itemB,
       }
-      const res = await savePreset({ nickname: nickname.trim(), password: password || undefined, config })
+      const res = await savePreset({ nickname: nickname.trim(), config })
       setPresetMsg({ type: 'ok', text: `"${res.nickname}" 저장 완료!` })
     } catch {
-      setPresetMsg({ type: 'err', text: '저장 실패. 비밀번호를 확인해주세요.' })
+      setPresetMsg({ type: 'err', text: '저장 실패. 잠시 후 다시 시도해주세요.' })
     }
   }
 
   async function handleLoad() {
     if (!nickname.trim()) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
     try {
-      const res = await loadPreset({ nickname: nickname.trim(), password: password || undefined })
+      const res = await loadPreset({ nickname: nickname.trim() })
       const c = res.config
       setJob(c.job); setMode(c.mode); setBaseStat(c.baseStat); setSubStat(c.subStat)
       setWeaponType(c.weaponType); setWeaponAtk(c.weaponAtk); setAtkPercent(c.atkPercent)
@@ -275,7 +274,7 @@ export default function ItemCompare() {
       setPresetMsg({ type: 'ok', text: `"${res.nickname}" 불러오기 완료!` })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : ''
-      setPresetMsg({ type: 'err', text: msg.includes('비밀번호') ? '비밀번호가 일치하지 않습니다.' : '해당 닉네임을 찾을 수 없습니다.' })
+      setPresetMsg({ type: 'err', text: msg.includes('Too many requests') ? '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' : '해당 닉네임을 찾을 수 없습니다.' })
     }
   }
 
@@ -784,11 +783,6 @@ export default function ItemCompare() {
                 type="text" placeholder="닉네임" value={nickname}
                 onChange={e => setNickname(e.target.value)}
                 className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-              <input
-                type="password" placeholder="비밀번호 (선택)" value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="h-7 w-24 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
             <div className="flex gap-1.5">

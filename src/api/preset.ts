@@ -29,7 +29,6 @@ export type PresetConfig = {
 
 export type PresetSaveRequest = {
   nickname: string
-  password?: string
   config: PresetConfig
 }
 
@@ -40,7 +39,6 @@ export type PresetSaveResponse = {
 
 export type PresetLoadRequest = {
   nickname: string
-  password?: string
 }
 
 export type PresetLoadResponse = {
