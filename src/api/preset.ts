@@ -11,7 +11,7 @@ export type PresetConfig = {
   atkPercent: number
   critRate: number
   critDmgPP: number
-  skillPct?: number
+  skillCoeff: number
   blessingLevel: number
   empressBlessingLevel: number
   mapleWarriorLevel: number
@@ -23,8 +23,7 @@ export type PresetConfig = {
   useOverall: boolean
   slots: Record<string, ItemStatFull>
   compareSlot: string
-  itemA: ItemStatFull
-  itemB: ItemStatFull
+  compareItem: ItemStatFull
 }
 
 export type PresetSaveRequest = {

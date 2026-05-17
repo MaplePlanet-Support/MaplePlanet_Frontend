@@ -107,7 +107,8 @@ export type DamageCompareRequest = {
   decentSharpEyes: boolean
   babyDragonFood: boolean
   critRate: number
-  critDmgPP: number  // 크리티컬 시 추가 퍼뎀 %p (합연산)
+  critDmgPP: number  // 크리 시 추가 퍼뎀 절대값(%p). 예) SE30=140, CT30=100
+  skillCoeff: number // 기준 스킬 계수(%p). 예) 럭키세븐=150, 파워스트라이크=260
   equippedItems: ItemStatFull[]
   currentSlotItem: ItemStatFull | null
   itemA: ItemStatFull
@@ -121,8 +122,10 @@ export type DamageCompareResponse = {
   damageWithItemB: number
   magicWithItemA: number
   magicWithItemB: number
-  expectedDmgWithItemA: number
+  expectedDmgWithItemA: number       // 보스 기준 (총뎀 + 보공)
   expectedDmgWithItemB: number
+  expectedNormalDmgWithItemA: number // 일반 기준 (총뎀만)
+  expectedNormalDmgWithItemB: number
   statDifference: number
   damageDifference: number
   expectedDmgDiffPct: number
