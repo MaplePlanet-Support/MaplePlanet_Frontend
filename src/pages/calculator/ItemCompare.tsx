@@ -106,7 +106,7 @@ function ExpectedDmgBlock({
   return (
     <div>
       <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{title}</div>
-      {([['A', '현재 장착'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
+      {([['A', '장착중인 비교 아이템 스텟'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
         const val = label === 'A' ? valA : valB
         const isWin = winner === label
         return (
@@ -230,7 +230,7 @@ export default function ItemCompare() {
         ? item
         : { ...item, flatAtk: 0, atkPercent: 0, critRateBonus: 0, totalDmgPercent: 0, bossDmgPercent: 0 }
 
-      // itemA = 현재 장착 (slots[compareSlot]), itemB = 비교 아이템
+      // itemA = 장착중인 비교 아이템 스텟 (slots[compareSlot]), itemB = 비교 아이템
       const currentEquipped = currentSlotFull ?? emptyFull()
 
       if (mode === 1) {
@@ -254,7 +254,7 @@ export default function ItemCompare() {
         // weaponAtk(현재 무기 공격력)를 itemA.flatAtk으로 넘기고, API의 weaponAtk=0으로 설정.
         const apiWeaponAtk = isWeapon ? 0 : weaponAtk
         const currentEquippedDamage = isWeapon
-          ? { ...emptyFull(), flatAtk: weaponAtk, atkPercent: slots['무기'].atkPercent, critRateBonus: slots['무기'].critRateBonus, totalDmgPercent: slots['무기'].totalDmgPercent, bossDmgPercent: slots['무기'].bossDmgPercent }
+          ? { ...slots['무기'], flatAtk: weaponAtk }
           : sanitizeFull(currentEquipped, false)
         const compareItemDamage = sanitizeFull(compareItem, isWeapon)
         const res = await damageCompare({
@@ -403,21 +403,21 @@ export default function ItemCompare() {
                 </Select>
               </div>
               <div className="flex flex-col gap-1">
-                <Label className="text-xs">순수 {statLabel}</Label>
+                <Label className="text-xs">{statLabel}</Label>
                 <NumInput value={baseStat} onChange={setBaseStat} width={88} />
               </div>
               {mode === 2 && (
                 <>
                   <div className="flex flex-col gap-1">
-                    <Label className="text-xs">순수 {subLabel}</Label>
+                    <Label className="text-xs">{subLabel}</Label>
                     <NumInput value={subStat} onChange={setSubStat} width={88} />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <Label className="text-xs">크리 확률 %</Label>
+                    <Label className="text-xs">크리 확률</Label>
                     <NumInput value={critRate} onChange={setCritRate} width={60} />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <Label className="text-xs">크리 추가퍼뎀 (%p 절대값)</Label>
+                    <Label className="text-xs">크리 추가 퍼뎀</Label>
                     <NumInput value={critDmgPP} onChange={setCritDmgPP} width={72} />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -449,24 +449,18 @@ export default function ItemCompare() {
                   <thead>
                     <tr className="bg-muted/40">
                       <th className="border border-border px-2 py-1 text-left text-[11px] font-medium text-muted-foreground">슬롯</th>
-                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
-                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올%</th>
-                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">깡 {statLabel}</th>
+                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}</th>
                       {mode === 2 && (
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">깡 {subLabel}</th>
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}</th>
                       )}
+                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
+                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯 %</th>
                     </tr>
                   </thead>
                   <tbody>
                     {jobSlotRows.map(s => (
                       <tr key={s} className="hover:bg-muted/20">
                         <td className="border border-border px-2 py-0.5 text-xs text-muted-foreground whitespace-nowrap">{s}</td>
-                        <td className="border border-border px-1 py-0.5 text-center">
-                          <NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={68} />
-                        </td>
-                        <td className="border border-border px-1 py-0.5 text-center">
-                          <NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={68} />
-                        </td>
                         <td className="border border-border px-1 py-0.5 text-center">
                           <NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={68} />
                         </td>
@@ -475,6 +469,12 @@ export default function ItemCompare() {
                             <NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={68} />
                           </td>
                         )}
+                        <td className="border border-border px-1 py-0.5 text-center">
+                          <NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={68} />
+                        </td>
+                        <td className="border border-border px-1 py-0.5 text-center">
+                          <NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={68} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -487,24 +487,18 @@ export default function ItemCompare() {
                   <thead>
                     <tr className="bg-muted/40">
                       <th className="border border-border px-2 py-1 text-left text-[11px] font-medium text-muted-foreground">슬롯</th>
-                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
-                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올%</th>
-                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">깡 {statLabel}</th>
+                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}</th>
                       {mode === 2 && (
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">깡 {subLabel}</th>
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}</th>
                       )}
+                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
+                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯 %</th>
                     </tr>
                   </thead>
                   <tbody>
                     {COMMON_SLOTS.map(s => (
                       <tr key={s} className="hover:bg-muted/20">
                         <td className="border border-border px-2 py-0.5 text-xs text-muted-foreground whitespace-nowrap">{s}</td>
-                        <td className="border border-border px-1 py-0.5 text-center">
-                          <NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={68} />
-                        </td>
-                        <td className="border border-border px-1 py-0.5 text-center">
-                          <NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={68} />
-                        </td>
                         <td className="border border-border px-1 py-0.5 text-center">
                           <NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={68} />
                         </td>
@@ -513,6 +507,12 @@ export default function ItemCompare() {
                             <NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={68} />
                           </td>
                         )}
+                        <td className="border border-border px-1 py-0.5 text-center">
+                          <NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={68} />
+                        </td>
+                        <td className="border border-border px-1 py-0.5 text-center">
+                          <NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={68} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -537,7 +537,33 @@ export default function ItemCompare() {
                     <NumInput value={weaponAtk} onChange={setWeaponAtk} width={76} />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <Label className="text-xs">{atkColLabel}% (비교슬롯 제외)</Label>
+                    <Label className="text-xs">{statLabel}</Label>
+                    <NumInput value={slots['무기'].flatStat} onChange={v => updateSlot('무기', 'flatStat', v)} width={68} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">{statLabel}%</Label>
+                    <NumInput value={slots['무기'].statPercent} onChange={v => updateSlot('무기', 'statPercent', v)} width={68} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">{atkColLabel}%</Label>
+                    <NumInput value={slots['무기'].atkPercent} onChange={v => updateSlot('무기', 'atkPercent', v)} width={68} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">크확%</Label>
+                    <NumInput value={slots['무기'].critRateBonus} onChange={v => updateSlot('무기', 'critRateBonus', v)} width={68} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">총뎀%</Label>
+                    <NumInput value={slots['무기'].totalDmgPercent} onChange={v => updateSlot('무기', 'totalDmgPercent', v)} width={68} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">보공%</Label>
+                    <NumInput value={slots['무기'].bossDmgPercent} onChange={v => updateSlot('무기', 'bossDmgPercent', v)} width={68} />
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-4 items-end">
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">{atkColLabel}% (비교슬롯 제외, 무기 외 장비)</Label>
                     <NumInput value={atkPercent} onChange={setAtkPercent} width={84} />
                   </div>
                 </div>
@@ -561,18 +587,19 @@ export default function ItemCompare() {
               </div>
               {compareSlot && (
                 <span className="text-[11px] text-muted-foreground">
-                  현재: {statLabel}% {slots[compareSlot].statPercent} / 깡 {statLabel} {slots[compareSlot].flatStat}
-                  {mode === 2 && ` / 깡 ${subLabel} ${slots[compareSlot].flatSubStat}`}
+                  현재: {statLabel} {slots[compareSlot].flatStat} / {statLabel}% {slots[compareSlot].statPercent}
+                  {mode === 2 && !isWeaponCompare && ` / ${subLabel} ${slots[compareSlot].flatSubStat}`}
+                  {isWeaponCompare && ` / ${atkColLabel} ${weaponAtk}`}
                 </span>
               )}
             </div>
 
             <div className="flex flex-col gap-3">
-              {/* 현재 장착 (읽기 전용 요약) */}
+              {/* 장착중인 비교 아이템 스텟 (읽기 전용 요약) */}
               {compareSlot && (
                 <div className="border rounded-md p-3 bg-muted/20 flex flex-col gap-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-muted-foreground">현재 장착</span>
+                    <span className="text-sm font-semibold text-muted-foreground">장착중인 비교 아이템 스텟</span>
                     {statA !== null && (
                       <span className="text-xs text-muted-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                         {statA.toFixed(1)} {statLabel}
@@ -580,9 +607,9 @@ export default function ItemCompare() {
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {statLabel}% {slots[compareSlot].statPercent} / 깡 {statLabel} {slots[compareSlot].flatStat}
-                    {mode === 2 && ` / 깡 ${subLabel} ${slots[compareSlot].flatSubStat}`}
-                    {isWeaponCompare && ` / ${atkColLabel} ${slots[compareSlot].flatAtk} / ${atkColLabel}% ${slots[compareSlot].atkPercent} / 크확% ${slots[compareSlot].critRateBonus}`}
+                    {statLabel} {slots[compareSlot].flatStat} / {statLabel}% {slots[compareSlot].statPercent}
+                    {mode === 2 && ` / ${subLabel} ${slots[compareSlot].flatSubStat}`}
+                    {isWeaponCompare && ` / ${atkColLabel} ${weaponAtk} / ${atkColLabel}% ${slots[compareSlot].atkPercent} / 크확% ${slots[compareSlot].critRateBonus} / 총뎀% ${slots[compareSlot].totalDmgPercent} / 보공% ${slots[compareSlot].bossDmgPercent}`}
                   </div>
                 </div>
               )}
@@ -606,23 +633,23 @@ export default function ItemCompare() {
                 {/* 스탯 행 */}
                 <div className="flex flex-wrap gap-x-3 gap-y-1.5">
                   <div className="flex flex-col gap-0.5">
-                    <Label className="text-[10px] text-muted-foreground">{statLabel}%</Label>
-                    <NumInput value={compareItem.statPercent} onChange={v => setCompareItem({ ...compareItem, statPercent: v })} max={1000} width={68} />
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <Label className="text-[10px] text-muted-foreground">올%</Label>
-                    <NumInput value={compareItem.allStatPercent} onChange={v => setCompareItem({ ...compareItem, allStatPercent: v })} max={1000} width={68} />
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <Label className="text-[10px] text-muted-foreground">깡 {statLabel}</Label>
+                    <Label className="text-[10px] text-muted-foreground">{statLabel}</Label>
                     <NumInput value={compareItem.flatStat} onChange={v => setCompareItem({ ...compareItem, flatStat: v })} max={1000} width={68} />
                   </div>
                   {mode === 2 && (
                     <div className="flex flex-col gap-0.5">
-                      <Label className="text-[10px] text-muted-foreground">깡 {subLabel}</Label>
+                      <Label className="text-[10px] text-muted-foreground">{subLabel}</Label>
                       <NumInput value={compareItem.flatSubStat} onChange={v => setCompareItem({ ...compareItem, flatSubStat: v })} max={1000} width={68} />
                     </div>
                   )}
+                  <div className="flex flex-col gap-0.5">
+                    <Label className="text-[10px] text-muted-foreground">{statLabel}%</Label>
+                    <NumInput value={compareItem.statPercent} onChange={v => setCompareItem({ ...compareItem, statPercent: v })} max={1000} width={68} />
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <Label className="text-[10px] text-muted-foreground">올스탯 %</Label>
+                    <NumInput value={compareItem.allStatPercent} onChange={v => setCompareItem({ ...compareItem, allStatPercent: v })} max={1000} width={68} />
+                  </div>
                 </div>
 
                 {isWeaponCompare && (
@@ -670,7 +697,7 @@ export default function ItemCompare() {
           {result === null ? (
             <div className="py-10 text-center">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                순수 {statLabel}을 입력하면<br />결과가 여기에 표시됩니다.
+                {statLabel}을 입력하면<br />결과가 여기에 표시됩니다.
               </p>
             </div>
           ) : (
@@ -678,7 +705,7 @@ export default function ItemCompare() {
               {/* 주스탯 */}
               <div className="flex flex-col gap-2">
                 <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{statLabel} (주스탯)</div>
-                {([['A', '현재 장착'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
+                {([['A', '장착중인 비교 아이템 스텟'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
                   const val = label === 'A' ? statA : statB
                   const isWin = winner === label
                   return (
@@ -726,7 +753,7 @@ export default function ItemCompare() {
                         return (
                           <div key={label}>
                             <div className="flex items-baseline justify-between mb-1">
-                              <span className={`text-xs font-medium ${isWin ? 'text-maple' : 'text-muted-foreground'}`}>{label === 'A' ? '현재 장착' : '비교 아이템'}</span>
+                              <span className={`text-xs font-medium ${isWin ? 'text-maple' : 'text-muted-foreground'}`}>{label === 'A' ? '장착중인 비교 아이템 스텟' : '비교 아이템'}</span>
                               <span className={`text-lg font-semibold ${isWin ? 'text-maple' : 'text-foreground'}`}
                                 style={{ fontFamily: "'JetBrains Mono', monospace" }}>{val.toFixed(0)}</span>
                             </div>
@@ -746,7 +773,7 @@ export default function ItemCompare() {
                       <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                         {isMage ? '기본 데미지' : '스공'}
                       </div>
-                      {([['A', '현재 장착'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
+                      {([['A', '장착중인 비교 아이템 스텟'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
                         const dmg = label === 'A' ? dmgA : dmgB
                         const isWin = winner === label
                         return (
@@ -786,7 +813,7 @@ export default function ItemCompare() {
                       {/* 승자 배너 */}
                       <div className={`rounded-md px-3 py-2 text-sm font-medium ${winner === 'SAME' ? 'bg-muted/40 text-muted-foreground' : 'bg-win-bg text-foreground'}`}>
                         {winner === 'SAME' ? '두 아이템이 동일합니다' : (
-                          <><span className="text-maple font-semibold">{winner === 'B' ? '비교 아이템' : '현재 장착'}</span>이{' '}
+                          <><span className="text-maple font-semibold">{winner === 'B' ? '비교 아이템' : '장착중인 비교 아이템 스텟'}</span>이{' '}
                           <span className="text-win font-semibold">{Math.abs(expDiffPct).toFixed(2)}%</span> 더 강함
                           {hasBossDmg && <span className="text-muted-foreground text-xs ml-1">(보스 기준)</span>}</>
                         )}
