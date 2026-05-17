@@ -106,7 +106,7 @@ function ExpectedDmgBlock({
   return (
     <div>
       <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{title}</div>
-      {([['A', '장착중인 비교 아이템 스텟'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
+      {([['A', '장착중인 비교 아이템'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
         const val = label === 'A' ? valA : valB
         const isWin = winner === label
         return (
@@ -230,7 +230,7 @@ export default function ItemCompare() {
         ? item
         : { ...item, flatAtk: 0, atkPercent: 0, critRateBonus: 0, totalDmgPercent: 0, bossDmgPercent: 0 }
 
-      // itemA = 장착중인 비교 아이템 스텟 (slots[compareSlot]), itemB = 비교 아이템
+      // itemA = 장착중인 비교 아이템 (slots[compareSlot]), itemB = 비교 아이템
       const currentEquipped = currentSlotFull ?? emptyFull()
 
       if (mode === 1) {
@@ -595,11 +595,11 @@ export default function ItemCompare() {
             </div>
 
             <div className="flex flex-col gap-3">
-              {/* 장착중인 비교 아이템 스텟 (읽기 전용 요약) */}
+              {/* 장착중인 비교 아이템 (읽기 전용 요약) */}
               {compareSlot && (
                 <div className="border rounded-md p-3 bg-muted/20 flex flex-col gap-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-muted-foreground">장착중인 비교 아이템 스텟</span>
+                    <span className="text-sm font-semibold text-muted-foreground">장착중인 비교 아이템</span>
                     {statA !== null && (
                       <span className="text-xs text-muted-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                         {statA.toFixed(1)} {statLabel}
@@ -705,7 +705,7 @@ export default function ItemCompare() {
               {/* 주스탯 */}
               <div className="flex flex-col gap-2">
                 <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{statLabel} (주스탯)</div>
-                {([['A', '장착중인 비교 아이템 스텟'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
+                {([['A', '장착중인 비교 아이템'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
                   const val = label === 'A' ? statA : statB
                   const isWin = winner === label
                   return (
@@ -753,7 +753,7 @@ export default function ItemCompare() {
                         return (
                           <div key={label}>
                             <div className="flex items-baseline justify-between mb-1">
-                              <span className={`text-xs font-medium ${isWin ? 'text-maple' : 'text-muted-foreground'}`}>{label === 'A' ? '장착중인 비교 아이템 스텟' : '비교 아이템'}</span>
+                              <span className={`text-xs font-medium ${isWin ? 'text-maple' : 'text-muted-foreground'}`}>{label === 'A' ? '장착중인 비교 아이템' : '비교 아이템'}</span>
                               <span className={`text-lg font-semibold ${isWin ? 'text-maple' : 'text-foreground'}`}
                                 style={{ fontFamily: "'JetBrains Mono', monospace" }}>{val.toFixed(0)}</span>
                             </div>
@@ -773,7 +773,7 @@ export default function ItemCompare() {
                       <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                         {isMage ? '기본 데미지' : '스공'}
                       </div>
-                      {([['A', '장착중인 비교 아이템 스텟'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
+                      {([['A', '장착중인 비교 아이템'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
                         const dmg = label === 'A' ? dmgA : dmgB
                         const isWin = winner === label
                         return (
@@ -813,7 +813,7 @@ export default function ItemCompare() {
                       {/* 승자 배너 */}
                       <div className={`rounded-md px-3 py-2 text-sm font-medium ${winner === 'SAME' ? 'bg-muted/40 text-muted-foreground' : 'bg-win-bg text-foreground'}`}>
                         {winner === 'SAME' ? '두 아이템이 동일합니다' : (
-                          <><span className="text-maple font-semibold">{winner === 'B' ? '비교 아이템' : '장착중인 비교 아이템 스텟'}</span>이{' '}
+                          <><span className="text-maple font-semibold">{winner === 'B' ? '비교 아이템' : '장착중인 비교 아이템'}</span>이{' '}
                           <span className="text-win font-semibold">{Math.abs(expDiffPct).toFixed(2)}%</span> 더 강함
                           {hasBossDmg && <span className="text-muted-foreground text-xs ml-1">(보스 기준)</span>}</>
                         )}
