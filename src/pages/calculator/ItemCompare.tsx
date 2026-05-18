@@ -407,24 +407,10 @@ export default function ItemCompare() {
                 <NumInput value={baseStat} onChange={setBaseStat} width={88} />
               </div>
               {mode === 2 && (
-                <>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">{subLabel}</Label>
-                    <NumInput value={subStat} onChange={setSubStat} width={88} />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">크리 확률</Label>
-                    <NumInput value={critRate} onChange={setCritRate} width={60} />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">크리 추가 퍼뎀</Label>
-                    <NumInput value={critDmgPP} onChange={setCritDmgPP} width={72} />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">기준 스킬 계수 (%p)</Label>
-                    <NumInput value={skillCoeff} onChange={v => setSkillCoeff(Math.max(1, v))} width={72} />
-                  </div>
-                </>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs">{subLabel}</Label>
+                  <NumInput value={subStat} onChange={setSubStat} width={88} />
+                </div>
               )}
             </div>
           </section>
