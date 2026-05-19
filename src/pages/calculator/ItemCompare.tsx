@@ -352,6 +352,7 @@ export default function ItemCompare() {
   const [presetMsg, setPresetMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
   // AP 재분배 시뮬레이터
+  const [apReverseReq, setApReverseReq] = useState(0)
   const [apTopReq1, setApTopReq1] = useState(0)
   const [apTopReq2, setApTopReq2] = useState(0)
   const [apCompareItemReq, setApCompareItemReq] = useState(0)
@@ -408,11 +409,11 @@ export default function ItemCompare() {
       if (mode !== 2 || baseStat <= 0 || apTopReq1 <= 0) { setApResult(null); return }
       const activeSlotsList = getActiveSlots()
       const fSubA = activeSlotsList.reduce((s, k) => s + slots[k].flatSubStat, 0)
-      const aStatA = activeSlotsList.reduce((s, k) => s + slots[k].allStatPercent, 0)
+      const aStatA = activeSlotsList.reduce((s, k) => s + slots[k].allStatPercent + slots[k].subStatPercent, 0)
       const fSubWithoutCurrent = fSubA - slots[compareSlot].flatSubStat
-      const aStatWithoutCurrent = aStatA - slots[compareSlot].allStatPercent
+      const aStatWithoutCurrent = aStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent)
       const fSubB = fSubA - slots[compareSlot].flatSubStat + compareItem.flatSubStat
-      const aStatB = aStatA - slots[compareSlot].allStatPercent + compareItem.allStatPercent
+      const aStatB = aStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent) + (compareItem.allStatPercent + (compareItem.subStatPercent ?? 0))
       const currentSubStat = effectiveStat(subStat, fSubA, aStatA)
       const topReq1 = Math.min(apTopReq1, currentSubStat)
       const topReq2 = Math.min(apTopReq2, currentSubStat)
@@ -423,9 +424,9 @@ export default function ItemCompare() {
       const needForCompareItem = requiredBaseStat(apCompareItemReq, fSubWithoutCurrent, aStatWithoutCurrent)
       const needForEquippedItems = requiredBaseStat(remainingEquippedReq, fSubB, aStatB)
       const needB = Math.max(needForCompareItem, needForEquippedItems)
-      const statShift = needA - needB
+      const statShift = subStat - needB
       const redistributedBaseStat = baseStat + statShift
-      const redistributedSubStat = subStat - statShift
+      const redistributedSubStat = needB
       if (statShift === 0 || redistributedBaseStat < 0 || redistributedSubStat < 0) { setApResult(null); return }
       try {
         const isWeapon = compareSlot === '무기'
@@ -586,7 +587,8 @@ export default function ItemCompare() {
       setPresetMsg({ type: 'ok', text: `"${res.nickname}" 저장 완료!` })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : ''
-      setPresetMsg({ type: 'err', text: msg.includes('비밀번호') ? msg : '저장 실패. 잠시 후 다시 시도해주세요.' })
+      const isReadable = msg && !/^\d{3}\s/.test(msg)
+      setPresetMsg({ type: 'err', text: isReadable ? msg : '저장 실패. 잠시 후 다시 시도해주세요.' })
     }
   }
 
@@ -660,11 +662,11 @@ export default function ItemCompare() {
 
   // AP 재분배 계산 (디스플레이용)
   const apFlatSubA = activeSlots.reduce((s, k) => s + slots[k].flatSubStat, 0)
-  const apAllStatA = activeSlots.reduce((s, k) => s + slots[k].allStatPercent, 0)
+  const apAllStatA = activeSlots.reduce((s, k) => s + slots[k].allStatPercent + slots[k].subStatPercent, 0)
   const apFlatSubWithoutCurrent = apFlatSubA - slots[compareSlot].flatSubStat
-  const apAllStatWithoutCurrent = apAllStatA - slots[compareSlot].allStatPercent
+  const apAllStatWithoutCurrent = apAllStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent)
   const apFlatSubB = apFlatSubA - slots[compareSlot].flatSubStat + compareItem.flatSubStat
-  const apAllStatB = apAllStatA - slots[compareSlot].allStatPercent + compareItem.allStatPercent
+  const apAllStatB = apAllStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent) + (compareItem.allStatPercent + (compareItem.subStatPercent ?? 0))
   const apCurrentSubStat = effectiveStat(subStat, apFlatSubA, apAllStatA)
   const apEffectiveTopReq1 = Math.min(apTopReq1, apCurrentSubStat)
   const apEffectiveTopReq2 = Math.min(apTopReq2, apCurrentSubStat)
@@ -682,10 +684,10 @@ export default function ItemCompare() {
     : 0
   const apNeedB = Math.max(apNeedForCompareItem, apNeedForEquippedItems)
   const apEffReq = Math.max(apRemainingEquippedReq, apCompareItemReq)
-  const apStatShift = apNeedA - apNeedB
+  const apStatShift = apEffectiveTopReq1 > 0 ? subStat - apNeedB : 0
   const apShiftAbs = Math.abs(apStatShift)
   const apRedistributedBaseStat = baseStat + apStatShift
-  const apRedistributedSubStat = subStat - apStatShift
+  const apRedistributedSubStat = apNeedB
   const canShowApRedistribution = apEffectiveTopReq1 > 0 && apStatShift !== 0 && apRedistributedBaseStat >= 0 && apRedistributedSubStat >= 0
   const apHasRequirement = apTopReq1 > 0
   const apSummaryTone = apStatShift > 0 ? 'text-win' : apStatShift < 0 ? 'text-lose' : 'text-muted-foreground'
@@ -1055,6 +1057,12 @@ export default function ItemCompare() {
                         <Label className="text-[10px] text-muted-foreground">{statLabel}%</Label>
                         <NumInput value={compareItem.statPercent} onChange={v => setCompareItem({ ...compareItem, statPercent: v })} max={1000} width={68} />
                       </div>
+                      {mode === 2 && (
+                        <div className="flex flex-col gap-0.5">
+                          <Label className="text-[10px] text-muted-foreground">{subLabel}%</Label>
+                          <NumInput value={compareItem.subStatPercent} onChange={v => setCompareItem({ ...compareItem, subStatPercent: v })} max={1000} width={68} />
+                        </div>
+                      )}
                       <div className="flex flex-col gap-0.5">
                         <Label className="text-[10px] text-muted-foreground">올스탯 %</Label>
                         <NumInput value={compareItem.allStatPercent} onChange={v => setCompareItem({ ...compareItem, allStatPercent: v })} max={1000} width={68} />
@@ -1403,6 +1411,65 @@ export default function ItemCompare() {
             </div>
           </div>
         </div>
+
+        {/* AP 역산 */}
+        {(() => {
+          const mwPct = mapleWarriorLevel > 0 ? Math.floor((mapleWarriorLevel + 1) / 2) : 0
+          const flatMainEquip = activeSlots.reduce((s, k) => s + (slots[k].flatStat ?? 0) + (slots[k].flatAllStat ?? 0), 0)
+          const mainPct = activeSlots.reduce((s, k) => s + (slots[k].statPercent ?? 0) + (slots[k].allStatPercent ?? 0), 0)
+          const minPureSub = apReverseReq > 0 ? requiredBaseStat(apReverseReq, apFlatSubA, apAllStatA) : 0
+          const moveable = apReverseReq > 0 ? Math.max(0, subStat - minPureSub) : 0
+          const newPureMain = baseStat + moveable
+          const newBuffedMain = newPureMain + Math.floor(newPureMain * mwPct / 100)
+          const newFinalMain = Math.floor((newBuffedMain + flatMainEquip) * (1 + mainPct / 100))
+          const curBuffedMain = baseStat + Math.floor(baseStat * mwPct / 100)
+          const curFinalMain = Math.floor((curBuffedMain + flatMainEquip) * (1 + mainPct / 100))
+          return (
+            <div className="flex flex-col gap-3 border-b border-border pb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">AP 역산</span>
+                <span className="text-[11px] text-muted-foreground">— 최소 필요 최종 {subLabel}을 입력하면 이전 가능한 AP를 계산합니다</span>
+              </div>
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs">최소 필요 최종 {subLabel}</Label>
+                  <NumInput value={apReverseReq} onChange={setApReverseReq} width={80} />
+                </div>
+                {apReverseReq > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    <div className="rounded-md bg-muted/30 px-3 py-2 text-xs">
+                      <div className="text-[10px] text-muted-foreground">필요 순수 {subLabel}</div>
+                      <div className="font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{minPureSub}</div>
+                    </div>
+                    <div className="rounded-md bg-muted/30 px-3 py-2 text-xs">
+                      <div className="text-[10px] text-muted-foreground">이전 가능 AP</div>
+                      <div className={`font-semibold ${moveable > 0 ? 'text-win' : 'text-muted-foreground'}`} style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                        {moveable > 0 ? `+${moveable}` : '0'}
+                      </div>
+                    </div>
+                    {moveable > 0 && (
+                      <>
+                        <div className="rounded-md bg-muted/30 px-3 py-2 text-xs">
+                          <div className="text-[10px] text-muted-foreground">순수 {statLabel}</div>
+                          <div className="font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{baseStat} → <span className="text-win">{newPureMain}</span></div>
+                        </div>
+                        <div className="rounded-md bg-muted/30 px-3 py-2 text-xs">
+                          <div className="text-[10px] text-muted-foreground">최종 {statLabel}</div>
+                          <div className="font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{curFinalMain} → <span className="text-win">{newFinalMain}</span></div>
+                        </div>
+                      </>
+                    )}
+                    {moveable === 0 && subStat > 0 && (
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        {subStat <= minPureSub ? `순수 ${subLabel}가 이미 최소치입니다` : '이전 가능한 AP가 없습니다'}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* 요구치 입력 */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
