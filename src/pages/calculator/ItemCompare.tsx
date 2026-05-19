@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem,
@@ -49,6 +49,43 @@ const JOB_DEFAULT_WEAPON: Record<string, WeaponType> = {
 }
 
 const ALL_WEAPON_OPTIONS = [...WEAPON_OPTIONS, ...MAGE_WEAPON_OPTIONS]
+
+type AmmoItem = { name: string; img: string; atk: number }
+
+const AMMO: Partial<Record<WeaponType, AmmoItem[]>> = {
+  BOW: [
+    { name: '활 전용 화살', img: '/arrow/활 전용 화살.png', atk: 0 },
+    { name: '활 전용 청동화살', img: '/arrow/활 전용 청동화살.png', atk: 1 },
+    { name: '활 전용 강철화살', img: '/arrow/활 전용 빨간 화살.png', atk: 2 },
+  ],
+  CROSSBOW: [
+    { name: '석궁 전용 화살', img: '/arrow/석궁 전용 화살.png', atk: 0 },
+    { name: '석궁 전용 청동화살', img: '/arrow/석궁 전용 청동화살.png', atk: 1 },
+    { name: '석궁 전용 강철화살', img: '/arrow/석궁 전용 강철화살.png', atk: 2 },
+  ],
+  CLAW: [
+    { name: '수비 표창', img: '/Shuriken/수비 표창.png', atk: 15 },
+    { name: '눈덩이', img: '/Shuriken/눈덩이.png', atk: 17 },
+    { name: '월비 표창', img: '/Shuriken/월비 표창.png', atk: 17 },
+    { name: '나무팽이', img: '/Shuriken/나무팽이.png', atk: 19 },
+    { name: '목비 표창', img: '/Shuriken/목비 표창.png', atk: 19 },
+    { name: '메이플 표창', img: '/Shuriken/메이플 표창.png', atk: 21 },
+    { name: '고드름', img: '/Shuriken/고드름.png', atk: 21 },
+    { name: '금비 표창', img: '/Shuriken/금비 표창.png', atk: 21 },
+    { name: '토비 표창', img: '/Shuriken/토비 표창.png', atk: 23 },
+    { name: '뇌전 수리검', img: '/Shuriken/뇌전 수리검.png', atk: 25 },
+    { name: '화비 표창', img: '/Shuriken/화비 표창.png', atk: 27 },
+    { name: '일비 표창', img: '/Shuriken/일비 표창.png', atk: 27 },
+  ],
+  GUN: [
+    { name: '불릿', img: '/bullet/불릿.webp', atk: 10 },
+    { name: '스플릿 불릿', img: '/bullet/스플릿 불릿.webp', atk: 12 },
+    { name: '마이티 불릿', img: '/bullet/마이티 불릿.webp', atk: 14 },
+    { name: '바이탈 불릿', img: '/bullet/바이탈 불릿.png', atk: 16 },
+    { name: '샤이니 불릿', img: '/bullet/샤이니 불릿.png', atk: 18 },
+    { name: '이터널 불릿', img: '/bullet/이터널 불릿.png', atk: 20 },
+  ],
+}
 
 const JOB_WEAPONS: Record<string, WeaponType[]> = {
   전사: ['ONE_HAND_SWORD', 'ONE_HAND_AXE', 'ONE_HAND_BLUNT', 'TWO_HAND_SWORD', 'TWO_HAND_AXE', 'TWO_HAND_BLUNT', 'SPEAR', 'POLEARM'],
@@ -190,6 +227,70 @@ function BuffLabel({ icon, children }: { icon: string; children: React.ReactNode
   )
 }
 
+function AmmoDropdown({ items, value, onChange }: {
+  items: AmmoItem[]
+  value: AmmoItem | null
+  onChange: (item: AmmoItem | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex h-8 min-w-[180px] items-center gap-2 rounded border border-border bg-background px-3 text-sm transition-colors hover:bg-muted/40"
+      >
+        {value ? (
+          <>
+            <img src={value.img} alt="" className="h-6 w-6 object-contain" />
+            <span className="flex-1 text-left">{value.name}</span>
+            <span className="text-xs font-semibold text-maple" style={{ fontFamily: "'JetBrains Mono', monospace" }}>+{value.atk}</span>
+          </>
+        ) : (
+          <span className="flex-1 text-left text-muted-foreground">선택 안함</span>
+        )}
+        <span className="text-[10px] text-muted-foreground">▼</span>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 max-h-72 min-w-[220px] overflow-y-auto rounded-md border border-border bg-white py-1 shadow-lg">
+          <button
+            type="button"
+            onClick={() => { onChange(null); setOpen(false) }}
+            className={`flex w-full items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted/40 ${!value ? 'bg-muted/20' : ''}`}
+          >
+            선택 안함
+          </button>
+          <div className="my-1 border-t border-border" />
+          {items.map(item => (
+            <button
+              key={item.name}
+              type="button"
+              onClick={() => { onChange(item); setOpen(false) }}
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-sm transition-colors hover:bg-muted/40 ${value?.name === item.name ? 'bg-maple/5 text-maple' : ''}`}
+            >
+              <img src={item.img} alt="" className="h-6 w-6 object-contain" />
+              <span className="flex-1 text-left">{item.name}</span>
+              <span className="ml-auto text-xs font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>+{item.atk}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ExpectedDmgBlock({
   title, valA, valB,
 }: {
@@ -232,7 +333,7 @@ export default function ItemCompare() {
   const [decentSharpEyes, setDecentSharpEyes] = useState(false)
   const [babyDragonFood, setBabyDragonFood] = useState(false)
   const [hontaleVictory, setHontaleVictory] = useState(false)
-  const [ammoAtk, setAmmoAtk] = useState(0)
+  const [selectedAmmo, setSelectedAmmo] = useState<AmmoItem | null>(null)
   const [critRate, setCritRate] = useState(0)
   const [critDmgPP, setCritDmgPP] = useState(0)
   const [skillCoeff, setSkillCoeff] = useState(150)
@@ -245,8 +346,6 @@ export default function ItemCompare() {
   const [result, setResult] = useState<StatCompareResponse | DamageCompareResponse | null>(null)
   const [calculating, setCalculating] = useState(false)
   const [convResult, setConvResult] = useState<StatConvResponse | null>(null)
-  const [convType, setConvType] = useState<'stat' | 'allStat' | 'atkPct' | 'flatAtk' | 'bossDmg' | 'totalDmg'>('stat')
-  const [convInputVal, setConvInputVal] = useState(1)
 
   const [nickname, setNickname] = useState('')
   const [password, setPassword] = useState('')
@@ -265,7 +364,9 @@ export default function ItemCompare() {
   const statLabel = JOB_STAT[job]
   const subLabel = JOB_SUB[job]
   const weaponOptions = ALL_WEAPON_OPTIONS.filter(o => JOB_WEAPONS[job]?.includes(o.value))
-  const usesAmmo = weaponType === 'BOW' || weaponType === 'CROSSBOW' || weaponType === 'CLAW' || weaponType === 'GUN'
+  const ammoList = AMMO[weaponType] ?? null
+  const ammoAtk = selectedAmmo?.atk ?? 0
+  const usesAmmo = ammoList !== null
 
   const getActiveSlots = useCallback(
     () => ALL_SLOTS.filter(s => useOverall ? s !== '상의' && s !== '하의' : s !== '한벌옷'),
@@ -293,7 +394,7 @@ export default function ItemCompare() {
     setSkillCoeff(JOB_SKILL_COEFF[nextJob] ?? 150)
     setWeaponType(JOB_DEFAULT_WEAPON[nextJob])
     setCompareWeaponType(JOB_DEFAULT_WEAPON[nextJob])
-    setAmmoAtk(0)
+    setSelectedAmmo(null)
   }
 
   function handleUseOverallChange(checked: boolean) {
@@ -504,7 +605,7 @@ export default function ItemCompare() {
       setDecentSharpEyes(loadedSharpLevel > 0 ? false : c.decentSharpEyes ?? false)
       setBabyDragonFood(loadedRageLevel > 0 ? false : c.babyDragonFood ?? false)
       setHontaleVictory(c.hontaleVictory ?? false)
-      setAmmoAtk(c.ammoAtk ?? 0)
+      setSelectedAmmo((AMMO[c.weaponType] ?? []).find(item => item.atk === (c.ammoAtk ?? 0)) ?? null)
       if (c.critRate !== undefined) setCritRate(c.critRate)
       if (c.critDmgPP !== undefined) setCritDmgPP(c.critDmgPP)
       if (c.skillCoeff !== undefined) setSkillCoeff(c.skillCoeff)
@@ -755,7 +856,7 @@ export default function ItemCompare() {
                 <div className="flex flex-wrap gap-4 items-end">
                   <div className="flex flex-col gap-1">
                     <Label className="text-xs">무기 종류</Label>
-                    <Select value={weaponType} onValueChange={v => setWeaponType(v as WeaponType)}>
+                    <Select value={weaponType} onValueChange={v => { setWeaponType(v as WeaponType); setSelectedAmmo(null) }}>
                       <SelectTrigger className="h-8 w-28 text-sm"><SelectValue>{weaponLabel(weaponType)}</SelectValue></SelectTrigger>
                       <SelectContent>
                         {weaponOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
@@ -766,10 +867,12 @@ export default function ItemCompare() {
                     <Label className="text-xs">{isMage ? '무기 마력' : '무기 공격력'}</Label>
                     <NumInput value={weaponAtk} onChange={setWeaponAtk} width={76} />
                   </div>
-                  {usesAmmo && (
+                  {ammoList && (
                     <div className="flex flex-col gap-1">
-                      <Label className="text-xs">?/??</Label>
-                      <NumInput value={ammoAtk} onChange={setAmmoAtk} width={68} />
+                      <Label className="text-xs">
+                        {weaponType === 'BOW' ? '활 화살' : weaponType === 'CROSSBOW' ? '석궁 화살' : weaponType === 'CLAW' ? '표창' : '불릿'}
+                      </Label>
+                      <AmmoDropdown items={ammoList} value={selectedAmmo} onChange={setSelectedAmmo} />
                     </div>
                   )}
                   <div className="flex flex-col gap-1">
@@ -1126,26 +1229,14 @@ export default function ItemCompare() {
 
           {mode === 2 && convResult !== null && (() => {
             const atkLabel = isMage ? '마력' : '공격력'
-            const v = convInputVal
             const convOptions = [
-              { value: 'stat', label: `${statLabel}%`, unit: '%' },
-              { value: 'allStat', label: '올스탯%', unit: '%' },
-              { value: 'atkPct', label: `${atkLabel}%`, unit: '%' },
-              { value: 'flatAtk', label: atkLabel, unit: '' },
-              { value: 'bossDmg', label: '보공%', unit: '%' },
-              { value: 'totalDmg', label: '총뎀%', unit: '%' },
-            ] as const
-            const selected = convOptions.find(opt => opt.value === convType) ?? convOptions[0]
-            const convOutput = (() => {
-              switch (convType) {
-                case 'stat': return v * convResult.statPct1ToMainStat
-                case 'allStat': return v * convResult.allStatPct1ToMainStat
-                case 'atkPct': return v * convResult.atkPct1ToMainStat
-                case 'flatAtk': return v * convResult.flatAtk1ToMainStat
-                case 'bossDmg': return v * convResult.bossDmgPct1ToMainStat
-                case 'totalDmg': return v * convResult.totalDmgPct1ToMainStat
-              }
-            })()
+              { label: `${statLabel}% 1%`, value: convResult.statPct1ToMainStat },
+              { label: '올스탯% 1%', value: convResult.allStatPct1ToMainStat },
+              { label: `${atkLabel}% 1%`, value: convResult.atkPct1ToMainStat },
+              { label: `${atkLabel} 1`, value: convResult.flatAtk1ToMainStat },
+              { label: '보공% 1%', value: convResult.bossDmgPct1ToMainStat },
+              { label: '총뎀% 1%', value: convResult.totalDmgPct1ToMainStat },
+            ]
             return (
               <div className="border-t border-border pt-4 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
@@ -1155,43 +1246,21 @@ export default function ItemCompare() {
                     {' '} / 총 {atkLabel}: <span className="font-semibold text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{convResult.totalAttack}</span>
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex flex-col gap-1.5 rounded-md border border-border bg-muted/20 px-3 py-2.5">
-                    <div className="text-[10px] font-medium text-muted-foreground">환산 기준</div>
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                      {convOptions.map(opt => (
-                        <label key={opt.value} className="flex items-center gap-1.5 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="convType"
-                            value={opt.value}
-                            checked={convType === opt.value}
-                            onChange={() => setConvType(opt.value)}
-                            className="accent-maple"
-                          />
-                          <span className="text-xs text-foreground">{opt.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <div className="mt-1 flex items-center gap-1.5">
-                      <NumInput value={convInputVal} onChange={v => setConvInputVal(Math.max(0, v))} width={60} />
-                      <span className="text-xs text-muted-foreground">{selected.unit}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col justify-center gap-1 rounded-md border border-border bg-muted/20 px-3 py-2.5">
-                    <div className="text-[10px] font-medium text-muted-foreground">환산 결과</div>
-                    <div className="text-sm font-semibold text-foreground break-all" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                      {statLabel} +{convOutput.toFixed(2)}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      1{selected.unit} = {statLabel} +{(convOutput / Math.max(v, 1)).toFixed(2)}
-                    </div>
+                <div className="rounded-md border border-border bg-muted/20 px-3 py-2.5">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                    {convOptions.map(opt => (
+                      <div key={opt.label} className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground">{opt.label}</span>
+                        <span className="font-semibold text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                          {statLabel} +{opt.value.toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
             )
           })()}
-
           {mode === 2 && (
             <div className="border-t border-border pt-4">
               <div className="mb-2 flex items-center justify-between">
@@ -1261,7 +1330,7 @@ export default function ItemCompare() {
                 </label>
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
                   <input type="checkbox" checked={hontaleVictory} onChange={e => setHontaleVictory(e.target.checked)} />
-                  <BuffLabel icon="??? ???? ??.png">??? ???? ??</BuffLabel>
+                  <BuffLabel icon="혼테일 원정대의 승리.png">혼테일 원정대의 승리</BuffLabel>
                 </label>
               </div>
             </div>
