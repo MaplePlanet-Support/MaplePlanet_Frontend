@@ -30,6 +30,10 @@ export default function Layout() {
       <main>
         <Outlet />
       </main>
+      <footer className="mt-8 border-t border-black/8 bg-white px-6 py-4 text-center text-xs text-muted-foreground">
+        건의사항은 이메일로 문의해 주세요 —{' '}
+        <a href="mailto:tjdwkddl@gmail.com" className="text-foreground hover:underline">tjdwkddl@gmail.com</a>
+      </footer>
     </div>
   )
 }

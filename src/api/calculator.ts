@@ -10,6 +10,8 @@ export type ItemStatFull = {
   flatSubStat: number
   statPercent: number
   allStatPercent: number  // 올스탯%
+  flatAllStat: number     // 깡 올스탯
+  subStatPercent: number  // 부스탯%
   flatAtk: number
   atkPercent: number      // 공격력/마력% (잠재)
   critRateBonus: number   // 크리티컬 확률% (잠재)
@@ -77,6 +79,8 @@ export type DamageCalcRequest = {
   sharpEyesLevel: number
   decentSharpEyes: boolean
   babyDragonFood: boolean
+  hontaleVictory: boolean
+  ammoAtk: number
 }
 
 export type DamageCalcResponse = {
@@ -108,6 +112,8 @@ export type DamageCompareRequest = {
   sharpEyesLevel: number
   decentSharpEyes: boolean
   babyDragonFood: boolean
+  hontaleVictory: boolean
+  ammoAtk: number
   critRate: number
   critDmgPP: number  // 크리 시 추가 퍼뎀 절대값(%p). 예) SE30=140, CT30=100
   skillCoeff: number // 기준 스킬 계수(%p). 예) 럭키세븐=150, 파워스트라이크=260
@@ -142,3 +148,35 @@ export const calcDamage = (body: DamageCalcRequest) =>
 
 export const damageCompare = (body: DamageCompareRequest) =>
   api.post<DamageCompareResponse>('/v1/calculator/damage-compare', body)
+
+export type StatConvRequest = {
+  baseStat: number
+  subStat: number
+  weaponType: WeaponType
+  weaponAtk: number
+  mapleWarriorLevel: number
+  blessingLevel: number
+  empressBlessingLevel: number
+  meditationLevel: number
+  rageLevel: number
+  babyDragonFood: boolean
+  hontaleVictory: boolean
+  ammoAtk: number
+  equippedItems: ItemStatFull[]
+}
+
+export type StatConvResponse = {
+  statPct1ToMainStat: number
+  allStatPct1ToMainStat: number
+  atkPct1ToMainStat: number
+  flatAtk1ToMainStat: number
+  bossDmgPct1ToMainStat: number
+  totalDmgPct1ToMainStat: number
+  currentMainStat: number
+  finalSubStat: number
+  totalAttack: number
+  atkPct1: number
+}
+
+export const statConv = (body: StatConvRequest) =>
+  api.post<StatConvResponse>('/v1/calculator/stat-conv', body)

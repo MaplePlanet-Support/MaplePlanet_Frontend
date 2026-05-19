@@ -5,9 +5,9 @@ import {
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import {
-  statCompare, damageCompare, WEAPON_OPTIONS, MAGE_WEAPON_OPTIONS,
+  statCompare, damageCompare, statConv, WEAPON_OPTIONS, MAGE_WEAPON_OPTIONS,
   type WeaponType, type ItemStatFull, type ItemStat,
-  type StatCompareResponse, type DamageCompareResponse,
+  type StatCompareResponse, type DamageCompareResponse, type StatConvResponse,
 } from '@/api/calculator'
 import { savePreset, loadPreset, resetPresetPassword, type PresetConfig } from '@/api/preset'
 import { Activity, Calculator } from 'lucide-react'
@@ -68,6 +68,7 @@ const ALL_SLOTS = [...JOB_SLOTS, ...COMMON_SLOTS]
 
 const emptyFull = (): ItemStatFull => ({
   flatStat: 0, flatSubStat: 0, statPercent: 0, allStatPercent: 0,
+  flatAllStat: 0, subStatPercent: 0,
   flatAtk: 0, atkPercent: 0,
   critRateBonus: 0, totalDmgPercent: 0, bossDmgPercent: 0,
 })
@@ -230,6 +231,8 @@ export default function ItemCompare() {
   const [sharpEyesLevel, setSharpEyesLevel] = useState(0)
   const [decentSharpEyes, setDecentSharpEyes] = useState(false)
   const [babyDragonFood, setBabyDragonFood] = useState(false)
+  const [hontaleVictory, setHontaleVictory] = useState(false)
+  const [ammoAtk, setAmmoAtk] = useState(0)
   const [critRate, setCritRate] = useState(0)
   const [critDmgPP, setCritDmgPP] = useState(0)
   const [skillCoeff, setSkillCoeff] = useState(150)
@@ -241,6 +244,9 @@ export default function ItemCompare() {
   const [compareItem, setCompareItem] = useState<ItemStatFull>(emptyFull())
   const [result, setResult] = useState<StatCompareResponse | DamageCompareResponse | null>(null)
   const [calculating, setCalculating] = useState(false)
+  const [convResult, setConvResult] = useState<StatConvResponse | null>(null)
+  const [convType, setConvType] = useState<'stat' | 'allStat' | 'atkPct' | 'flatAtk' | 'bossDmg' | 'totalDmg'>('stat')
+  const [convInputVal, setConvInputVal] = useState(1)
 
   const [nickname, setNickname] = useState('')
   const [password, setPassword] = useState('')
@@ -259,6 +265,7 @@ export default function ItemCompare() {
   const statLabel = JOB_STAT[job]
   const subLabel = JOB_SUB[job]
   const weaponOptions = ALL_WEAPON_OPTIONS.filter(o => JOB_WEAPONS[job]?.includes(o.value))
+  const usesAmmo = weaponType === 'BOW' || weaponType === 'CROSSBOW' || weaponType === 'CLAW' || weaponType === 'GUN'
 
   const getActiveSlots = useCallback(
     () => ALL_SLOTS.filter(s => useOverall ? s !== '상의' && s !== '하의' : s !== '한벌옷'),
@@ -267,8 +274,12 @@ export default function ItemCompare() {
 
   const getJobSlotRows = useCallback(
     () => {
-      let rows = JOB_SLOTS.filter(s => useOverall ? s !== '상의' && s !== '하의' : s !== '한벌옷')
-      if (mode === 2) rows = rows.filter(s => s !== '무기')
+      let rows = JOB_SLOTS.filter(s => useOverall ? s !== JOB_SLOTS[2] && s !== JOB_SLOTS[3] : s !== JOB_SLOTS[1])
+      if (mode === 2) rows = rows.filter(s => s !== JOB_SLOTS[6])
+      const gloveSlot = JOB_SLOTS[4]
+      if (rows.includes(gloveSlot)) {
+        rows = [...rows.filter(s => s !== gloveSlot), gloveSlot]
+      }
       return rows
     },
     [useOverall, mode]
@@ -282,6 +293,7 @@ export default function ItemCompare() {
     setSkillCoeff(JOB_SKILL_COEFF[nextJob] ?? 150)
     setWeaponType(JOB_DEFAULT_WEAPON[nextJob])
     setCompareWeaponType(JOB_DEFAULT_WEAPON[nextJob])
+    setAmmoAtk(0)
   }
 
   function handleUseOverallChange(checked: boolean) {
@@ -321,7 +333,8 @@ export default function ItemCompare() {
           job, baseStat: redistributedBaseStat, subStat: redistributedSubStat,
           weaponType, itemBWeaponType: isWeapon ? compareWeaponType : undefined, weaponAtk: apiWeaponAtk, atkPercent: 0,
           blessingLevel, empressBlessingLevel, mapleWarriorLevel, meditationLevel, rageLevel,
-          sharpEyesLevel, decentSharpEyes, babyDragonFood, critRate, critDmgPP, skillCoeff,
+          sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk: usesAmmo ? ammoAtk : 0,
+          critRate, critDmgPP, skillCoeff,
           equippedItems: activeSlotsList.map(s => sanitizeFull(slots[s], s)),
           currentSlotItem: sanitizeFull(slots[compareSlot], compareSlot),
           itemA: isWeapon ? { ...slots['무기'], flatAtk: weaponAtk } : sanitizeFull(slots[compareSlot] ?? emptyFull(), compareSlot),
@@ -335,7 +348,7 @@ export default function ItemCompare() {
     apTopReq1, apTopReq2, apCompareItemReq, apCompareIsTop1,
     mode, baseStat, subStat, job, weaponType, compareWeaponType, weaponAtk,
     blessingLevel, empressBlessingLevel, mapleWarriorLevel, meditationLevel, rageLevel,
-    sharpEyesLevel, decentSharpEyes, babyDragonFood, critRate, critDmgPP, skillCoeff,
+    sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo, critRate, critDmgPP, skillCoeff,
     slots, compareSlot, compareItem, getActiveSlots,
   ])
 
@@ -403,7 +416,7 @@ export default function ItemCompare() {
           job, baseStat, subStat, weaponType, itemBWeaponType: isWeapon ? compareWeaponType : undefined, weaponAtk: apiWeaponAtk, atkPercent: 0,
           blessingLevel, empressBlessingLevel,
           mapleWarriorLevel, meditationLevel, rageLevel,
-          sharpEyesLevel, decentSharpEyes, babyDragonFood,
+          sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk: usesAmmo ? ammoAtk : 0,
           critRate, critDmgPP, skillCoeff,
           equippedItems: equippedDamage,
           currentSlotItem: currentDamage,
@@ -421,7 +434,7 @@ export default function ItemCompare() {
     mode, job, baseStat, subStat, weaponType, compareWeaponType, weaponAtk,
     blessingLevel, empressBlessingLevel,
     mapleWarriorLevel, meditationLevel, rageLevel,
-    sharpEyesLevel, decentSharpEyes, babyDragonFood,
+    sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo,
     critRate, critDmgPP, skillCoeff,
     slots, compareSlot, compareItem, getActiveSlots,
   ])
@@ -431,6 +444,31 @@ export default function ItemCompare() {
     return () => clearTimeout(timer)
   }, [calculate])
 
+  useEffect(() => {
+    if (mode !== 2 || baseStat <= 0) { setConvResult(null); return }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await statConv({
+          baseStat, subStat, weaponType, weaponAtk,
+          mapleWarriorLevel, blessingLevel, empressBlessingLevel,
+          meditationLevel, rageLevel, babyDragonFood,
+          hontaleVictory,
+          ammoAtk: usesAmmo ? ammoAtk : 0,
+          equippedItems: getActiveSlots().map(s => sanitizeFull(slots[s], s)),
+        })
+        setConvResult(res)
+      } catch {
+        setConvResult(null)
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [
+    mode, baseStat, subStat, weaponType, weaponAtk,
+    mapleWarriorLevel, blessingLevel, empressBlessingLevel,
+    meditationLevel, rageLevel, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo,
+    slots, getActiveSlots,
+  ])
+
   async function handleSave() {
     if (!nickname.trim()) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
     try {
@@ -438,7 +476,7 @@ export default function ItemCompare() {
         job, mode, baseStat, subStat, weaponType, compareWeaponType, weaponAtk, atkPercent: 0,
         blessingLevel, empressBlessingLevel,
         mapleWarriorLevel, meditationLevel, rageLevel,
-        sharpEyesLevel, decentSharpEyes, babyDragonFood,
+        sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk,
         critRate, critDmgPP, skillCoeff,
         useOverall, slots, compareSlot, compareItem,
       }
@@ -465,6 +503,8 @@ export default function ItemCompare() {
       setSharpEyesLevel(loadedSharpLevel)
       setDecentSharpEyes(loadedSharpLevel > 0 ? false : c.decentSharpEyes ?? false)
       setBabyDragonFood(loadedRageLevel > 0 ? false : c.babyDragonFood ?? false)
+      setHontaleVictory(c.hontaleVictory ?? false)
+      setAmmoAtk(c.ammoAtk ?? 0)
       if (c.critRate !== undefined) setCritRate(c.critRate)
       if (c.critDmgPP !== undefined) setCritDmgPP(c.critDmgPP)
       if (c.skillCoeff !== undefined) setSkillCoeff(c.skillCoeff)
@@ -645,90 +685,68 @@ export default function ItemCompare() {
             <div className="flex flex-col gap-4 xl:flex-row">
               <div className="flex-1 min-w-0">
                 <div className="text-[11px] font-medium text-muted-foreground mb-1">직업 부위</div>
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-muted/40">
-                      <th className="border border-border px-2 py-1 text-left text-[11px] font-medium text-muted-foreground">슬롯</th>
-                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}</th>
-                      {mode === 2 && (
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}</th>
-                      )}
-                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
-                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯 %</th>
-                      {mode === 2 && (
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jobSlotRows.map(s => (
-                      <tr key={s} className="hover:bg-muted/20">
-                        <td className="border border-border px-2 py-0.5 text-xs text-muted-foreground whitespace-nowrap">{s}</td>
-                        <td className="border border-border px-1 py-0.5 text-center">
-                          <NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={68} />
-                        </td>
-                        {mode === 2 && (
-                          <td className="border border-border px-1 py-0.5 text-center">
-                            <NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={68} />
-                          </td>
-                        )}
-                        <td className="border border-border px-1 py-0.5 text-center">
-                          <NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={68} />
-                        </td>
-                        <td className="border border-border px-1 py-0.5 text-center">
-                          <NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={68} />
-                        </td>
-                        {mode === 2 && (
-                          <td className="border border-border px-1 py-0.5 text-center">
-                            {isFlatAtkSlot(s) ? (
-                              <NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={68} />
-                            ) : (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            )}
-                          </td>
-                        )}
+                <div className="overflow-x-auto">
+                  <table className="border-collapse" style={{ minWidth: 'max-content' }}>
+                    <thead>
+                      <tr className="bg-muted/40">
+                        <th className="border border-border px-2 py-1 text-left text-[11px] font-medium text-muted-foreground">슬롯</th>
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}</th>
+                        {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}</th>)}
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯</th>
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
+                        {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}%</th>)}
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯%</th>
+                        {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>)}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {jobSlotRows.map(s => (
+                        <tr key={s} className="hover:bg-muted/20">
+                          <td className="border border-border px-2 py-0.5 text-xs text-muted-foreground whitespace-nowrap">{s}</td>
+                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={52} /></td>
+                          {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={52} /></td>)}
+                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].flatAllStat} onChange={v => updateSlot(s, 'flatAllStat', v)} max={1000} width={52} /></td>
+                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={52} /></td>
+                          {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].subStatPercent} onChange={v => updateSlot(s, 'subStatPercent', v)} max={1000} width={52} /></td>)}
+                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={52} /></td>
+                          {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center">{isFlatAtkSlot(s) && !isMage ? (<NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={52} />) : (<span className="text-xs text-muted-foreground">-</span>)}</td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="text-[11px] font-medium text-muted-foreground mb-1">공용 부위</div>
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-muted/40">
-                      <th className="border border-border px-2 py-1 text-left text-[11px] font-medium text-muted-foreground">슬롯</th>
-                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}</th>
-                      {mode === 2 && (
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}</th>
-                      )}
-                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
-                      <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯 %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {COMMON_SLOTS.map(s => (
-                      <tr key={s} className="hover:bg-muted/20">
-                        <td className="border border-border px-2 py-0.5 text-xs text-muted-foreground whitespace-nowrap">{s}</td>
-                        <td className="border border-border px-1 py-0.5 text-center">
-                          <NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={68} />
-                        </td>
-                        {mode === 2 && (
-                          <td className="border border-border px-1 py-0.5 text-center">
-                            <NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={68} />
-                          </td>
-                        )}
-                        <td className="border border-border px-1 py-0.5 text-center">
-                          <NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={68} />
-                        </td>
-                        <td className="border border-border px-1 py-0.5 text-center">
-                          <NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={68} />
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="border-collapse" style={{ minWidth: 'max-content' }}>
+                    <thead>
+                      <tr className="bg-muted/40">
+                        <th className="border border-border px-2 py-1 text-left text-[11px] font-medium text-muted-foreground">슬롯</th>
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}</th>
+                        {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}</th>)}
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯</th>
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
+                        {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}%</th>)}
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯%</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {COMMON_SLOTS.map(s => (
+                        <tr key={s} className="hover:bg-muted/20">
+                          <td className="border border-border px-2 py-0.5 text-xs text-muted-foreground whitespace-nowrap">{s}</td>
+                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={52} /></td>
+                          {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={52} /></td>)}
+                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].flatAllStat} onChange={v => updateSlot(s, 'flatAllStat', v)} max={1000} width={52} /></td>
+                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={52} /></td>
+                          {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].subStatPercent} onChange={v => updateSlot(s, 'subStatPercent', v)} max={1000} width={52} /></td>)}
+                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={52} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
@@ -748,6 +766,12 @@ export default function ItemCompare() {
                     <Label className="text-xs">{isMage ? '무기 마력' : '무기 공격력'}</Label>
                     <NumInput value={weaponAtk} onChange={setWeaponAtk} width={76} />
                   </div>
+                  {usesAmmo && (
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs">?/??</Label>
+                      <NumInput value={ammoAtk} onChange={setAmmoAtk} width={68} />
+                    </div>
+                  )}
                   <div className="flex flex-col gap-1">
                     <Label className="text-xs">{statLabel}</Label>
                     <NumInput value={slots['무기'].flatStat} onChange={v => updateSlot('무기', 'flatStat', v)} width={68} />
@@ -948,7 +972,7 @@ export default function ItemCompare() {
         </div>
 
         {/* ── RIGHT: 아이템 비교 결과 ── */}
-        <div className="bg-white rounded-xl border border-black/8 shadow-sm p-4 sm:p-5 lg:sticky lg:top-[72px] flex flex-col gap-4 h-fit">
+        <div className="bg-white rounded-xl border border-black/8 shadow-sm p-4 sm:p-5 lg:sticky lg:top-[72px] flex flex-col gap-4 h-fit lg:row-span-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">아이템 비교 결과</span>
             {calculating && <span className="text-[11px] text-muted-foreground">계산 중…</span>}
@@ -1100,6 +1124,74 @@ export default function ItemCompare() {
             </>
           )}
 
+          {mode === 2 && convResult !== null && (() => {
+            const atkLabel = isMage ? '마력' : '공격력'
+            const v = convInputVal
+            const convOptions = [
+              { value: 'stat', label: `${statLabel}%`, unit: '%' },
+              { value: 'allStat', label: '올스탯%', unit: '%' },
+              { value: 'atkPct', label: `${atkLabel}%`, unit: '%' },
+              { value: 'flatAtk', label: atkLabel, unit: '' },
+              { value: 'bossDmg', label: '보공%', unit: '%' },
+              { value: 'totalDmg', label: '총뎀%', unit: '%' },
+            ] as const
+            const selected = convOptions.find(opt => opt.value === convType) ?? convOptions[0]
+            const convOutput = (() => {
+              switch (convType) {
+                case 'stat': return v * convResult.statPct1ToMainStat
+                case 'allStat': return v * convResult.allStatPct1ToMainStat
+                case 'atkPct': return v * convResult.atkPct1ToMainStat
+                case 'flatAtk': return v * convResult.flatAtk1ToMainStat
+                case 'bossDmg': return v * convResult.bossDmgPct1ToMainStat
+                case 'totalDmg': return v * convResult.totalDmgPct1ToMainStat
+              }
+            })()
+            return (
+              <div className="border-t border-border pt-4 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">스탯 환산</div>
+                  <span className="text-[11px] text-muted-foreground">
+                    현재 {statLabel}: <span className="font-semibold text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{convResult.currentMainStat.toFixed(2)}</span>
+                    {' '} / 총 {atkLabel}: <span className="font-semibold text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{convResult.totalAttack}</span>
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-col gap-1.5 rounded-md border border-border bg-muted/20 px-3 py-2.5">
+                    <div className="text-[10px] font-medium text-muted-foreground">환산 기준</div>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                      {convOptions.map(opt => (
+                        <label key={opt.value} className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="convType"
+                            value={opt.value}
+                            checked={convType === opt.value}
+                            onChange={() => setConvType(opt.value)}
+                            className="accent-maple"
+                          />
+                          <span className="text-xs text-foreground">{opt.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <NumInput value={convInputVal} onChange={v => setConvInputVal(Math.max(0, v))} width={60} />
+                      <span className="text-xs text-muted-foreground">{selected.unit}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col justify-center gap-1 rounded-md border border-border bg-muted/20 px-3 py-2.5">
+                    <div className="text-[10px] font-medium text-muted-foreground">환산 결과</div>
+                    <div className="text-sm font-semibold text-foreground break-all" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                      {statLabel} +{convOutput.toFixed(2)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      1{selected.unit} = {statLabel} +{(convOutput / Math.max(v, 1)).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           {mode === 2 && (
             <div className="border-t border-border pt-4">
               <div className="mb-2 flex items-center justify-between">
@@ -1109,7 +1201,7 @@ export default function ItemCompare() {
                   onClick={() => {
                     setBlessingLevel(0); setEmPressBlessingLevel(0); setMapleWarriorLevel(0)
                     setMeditationLevel(0); setRageLevel(0); setSharpEyesLevel(0)
-                    setDecentSharpEyes(false); setBabyDragonFood(false)
+                    setDecentSharpEyes(false); setBabyDragonFood(false); setHontaleVictory(false)
                   }}
                   className="text-[10px] font-medium text-muted-foreground hover:text-foreground hover:underline"
                 >
@@ -1167,6 +1259,10 @@ export default function ItemCompare() {
                   <input type="checkbox" checked={babyDragonFood} onChange={e => setBabyDragonFoodSafe(e.target.checked)} />
                   <BuffLabel icon="아기용의 이유식.png">아기용의 이유식</BuffLabel>
                 </label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                  <input type="checkbox" checked={hontaleVictory} onChange={e => setHontaleVictory(e.target.checked)} />
+                  <BuffLabel icon="??? ???? ??.png">??? ???? ??</BuffLabel>
+                </label>
               </div>
             </div>
           )}
@@ -1205,10 +1301,10 @@ export default function ItemCompare() {
             )}
           </div>
         </div>
-      </div>
+
 
       {/* ── AP 재분배 시뮬레이터 ── */}
-      <div className="mx-3 mb-4 lg:mx-4 bg-white rounded-xl border border-black/8 shadow-sm p-4 sm:p-5 flex flex-col gap-4">
+      <div className="bg-white rounded-xl border border-black/8 shadow-sm p-4 sm:p-5 flex flex-col gap-4 lg:col-start-1">
         <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">AP 재분배 시뮬레이터</span>
@@ -1521,6 +1617,7 @@ export default function ItemCompare() {
             )}
           </div>
         )}
+      </div>
       </div>
     </div>
   )

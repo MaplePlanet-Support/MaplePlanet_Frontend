@@ -1,10 +1,48 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   calcDamage, MAGE_WEAPON_OPTIONS, WEAPON_OPTIONS,
   type WeaponType, type DamageCalcResponse,
 } from '@/api/calculator'
 
 const ALL_WEAPON_OPTIONS = [...WEAPON_OPTIONS, ...MAGE_WEAPON_OPTIONS]
+
+type AmmoItem = { name: string; img: string; atk: number }
+
+// 공격력 내림차순 정렬
+const AMMO: Partial<Record<WeaponType, AmmoItem[]>> = {
+  BOW: [
+    { name: '활 전용 화살',     img: '/arrow/활 전용 화살.png',      atk: 0 },
+    { name: '활 전용 청동화살', img: '/arrow/활 전용 청동화살.png',  atk: 1 },
+    { name: '활 전용 강철화살', img: '/arrow/활 전용 빨간 화살.png', atk: 2 },
+  ],
+  CROSSBOW: [
+    { name: '석궁 전용 화살',     img: '/arrow/석궁 전용 화살.png',     atk: 0 },
+    { name: '석궁 전용 청동화살', img: '/arrow/석궁 전용 청동화살.png', atk: 1 },
+    { name: '석궁 전용 강철화살', img: '/arrow/석궁 전용 강철화살.png', atk: 2 },
+  ],
+  CLAW: [
+    { name: '수비 표창',   img: '/Shuriken/수비 표창.png',   atk: 15 },
+    { name: '눈덩이',      img: '/Shuriken/눈덩이.png',      atk: 17 },
+    { name: '월비 표창',   img: '/Shuriken/월비 표창.png',   atk: 17 },
+    { name: '나무팽이',    img: '/Shuriken/나무팽이.png',    atk: 19 },
+    { name: '목비 표창',   img: '/Shuriken/목비 표창.png',   atk: 19 },
+    { name: '메이플 표창', img: '/Shuriken/메이플 표창.png', atk: 21 },
+    { name: '고드름',      img: '/Shuriken/고드름.png',      atk: 21 },
+    { name: '금비 표창',   img: '/Shuriken/금비 표창.png',   atk: 21 },
+    { name: '토비 표창',   img: '/Shuriken/토비 표창.png',   atk: 23 },
+    { name: '뇌전 수리검', img: '/Shuriken/뇌전 수리검.png', atk: 25 },
+    { name: '화비 표창',   img: '/Shuriken/화비 표창.png',   atk: 27 },
+    { name: '일비 표창',   img: '/Shuriken/일비 표창.png',   atk: 27 },
+  ],
+  GUN: [
+    { name: '불릿',        img: '/bullet/불릿.webp',        atk: 10 },
+    { name: '스플릿 불릿', img: '/bullet/스플릿 불릿.webp', atk: 12 },
+    { name: '마이티 불릿', img: '/bullet/마이티 불릿.webp', atk: 14 },
+    { name: '바이탈 불릿', img: '/bullet/바이탈 불릿.png',  atk: 16 },
+    { name: '샤이니 불릿', img: '/bullet/샤이니 불릿.png',  atk: 18 },
+    { name: '이터널 불릿', img: '/bullet/이터널 불릿.png',  atk: 20 },
+  ],
+}
 
 const JOB_DEFAULT_WEAPON: Record<string, WeaponType> = {
   전사: 'TWO_HAND_SWORD',
@@ -50,6 +88,70 @@ function NumInput({
   )
 }
 
+function AmmoDropdown({ items, value, onChange }: {
+  items: AmmoItem[]
+  value: AmmoItem | null
+  onChange: (item: AmmoItem | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 h-9 px-3 rounded border border-border bg-background text-sm hover:bg-muted/40 transition-colors min-w-[180px]"
+      >
+        {value ? (
+          <>
+            <img src={value.img} alt="" className="h-6 w-6 object-contain" />
+            <span className="flex-1 text-left">{value.name}</span>
+            <span className="text-xs font-semibold text-maple" style={{ fontFamily: "'JetBrains Mono', monospace" }}>+{value.atk}</span>
+          </>
+        ) : (
+          <span className="flex-1 text-left text-muted-foreground">선택 안함</span>
+        )}
+        <span className="text-muted-foreground text-[10px]">▾</span>
+      </button>
+
+      {open && (
+        <div className="absolute z-50 top-full left-0 mt-1 bg-white border border-border rounded-md shadow-lg py-1 min-w-[220px] max-h-72 overflow-y-auto">
+          <button
+            type="button"
+            onClick={() => { onChange(null); setOpen(false) }}
+            className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted/40 transition-colors ${!value ? 'bg-muted/20' : ''}`}
+          >
+            선택 안함
+          </button>
+          <div className="border-t border-border my-1" />
+          {items.map(item => (
+            <button
+              key={item.name}
+              type="button"
+              onClick={() => { onChange(item); setOpen(false) }}
+              className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted/40 transition-colors ${value?.name === item.name ? 'bg-maple/5 text-maple' : ''}`}
+            >
+              <img src={item.img} alt="" className="h-6 w-6 object-contain" />
+              <span className="flex-1 text-left">{item.name}</span>
+              <span className="text-xs font-semibold ml-auto" style={{ fontFamily: "'JetBrains Mono', monospace" }}>+{item.atk}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function BuffLabel({ icon, children }: { icon: string; children: React.ReactNode }) {
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -75,10 +177,13 @@ export default function DamageCalculator() {
   const [sharpEyesLevel, setSharpEyesLevel] = useState(0)
   const [decentSharpEyes, setDecentSharpEyes] = useState(false)
   const [babyDragonFood, setBabyDragonFood] = useState(false)
+  const [hontaleVictory, setHontaleVictory] = useState(false)
+  const [selectedAmmo, setSelectedAmmo] = useState<AmmoItem | null>(null)
   const [result, setResult] = useState<DamageCalcResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [calculating, setCalculating] = useState(false)
   const isMagicWeapon = weaponType === 'WAND' || weaponType === 'STAFF'
+  const ammoList = AMMO[weaponType] ?? null
 
   function setSharpEyesLevelSafe(value: number) {
     const next = levelValue(value, 30)
@@ -113,6 +218,8 @@ export default function DamageCalculator() {
         blessingLevel, empressBlessingLevel,
         mapleWarriorLevel, meditationLevel, rageLevel,
         sharpEyesLevel, decentSharpEyes, babyDragonFood,
+        hontaleVictory,
+        ammoAtk: selectedAmmo?.atk ?? 0,
       })
       setResult(res)
     } catch {
@@ -129,7 +236,7 @@ export default function DamageCalculator() {
     >
       <div className="bg-white border-b border-black/8 px-6 py-3">
         <div className="text-[11px] text-muted-foreground tracking-widest uppercase">PlanetCompare</div>
-        <div className="text-lg font-semibold text-foreground leading-tight">스공 계산기</div>
+        <div className="text-lg font-semibold text-foreground leading-tight">{isMagicWeapon ? '마력 계산기' : '스공 계산기'}</div>
       </div>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 p-3 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-4 lg:items-start">
@@ -148,6 +255,7 @@ export default function DamageCalculator() {
                     const nextJob = e.target.value
                     setJob(nextJob)
                     setWeaponType(JOB_DEFAULT_WEAPON[nextJob])
+                    setSelectedAmmo(null)
                   }}
                   className="h-8 w-32 rounded border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 >
@@ -166,7 +274,7 @@ export default function DamageCalculator() {
                 <label className="text-xs text-muted-foreground">무기 종류</label>
                 <select
                   value={weaponType}
-                  onChange={e => setWeaponType(e.target.value as WeaponType)}
+                  onChange={e => { setWeaponType(e.target.value as WeaponType); setSelectedAmmo(null) }}
                   className="h-8 w-32 rounded border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 >
                   {ALL_WEAPON_OPTIONS.filter(o => JOB_WEAPONS[job]?.includes(o.value)).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -194,6 +302,15 @@ export default function DamageCalculator() {
               </div>
             </div>
           </section>
+
+          {ammoList && (
+            <section>
+              <div className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {weaponType === 'BOW' || weaponType === 'CROSSBOW' ? '화살' : weaponType === 'CLAW' ? '표창' : '불릿'}
+              </div>
+              <AmmoDropdown items={ammoList} value={selectedAmmo} onChange={setSelectedAmmo} />
+            </section>
+          )}
 
           <section>
             <div className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">버프</div>
@@ -246,6 +363,13 @@ export default function DamageCalculator() {
                 <input type="checkbox" checked={babyDragonFood} onChange={e => setBabyDragonFoodSafe(e.target.checked)} />
                 <BuffLabel icon="아기용의 이유식.png">아기용의 이유식</BuffLabel>
               </label>
+              <label className="rounded-md border border-border p-3 flex items-center justify-between gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                <span className="flex items-center gap-2">
+                  <input type="checkbox" checked={hontaleVictory} onChange={e => setHontaleVictory(e.target.checked)} />
+                  <BuffLabel icon="혼테일 원정대의 승리.png">혼테일 원정대의 승리</BuffLabel>
+                </span>
+                <span className="text-[11px] text-muted-foreground">공 +30 / 마 +40</span>
+              </label>
             </div>
           </section>
         </div>
@@ -270,14 +394,12 @@ export default function DamageCalculator() {
                   {isMagicWeapon ? result.totalMagic : result.totalAtk}
                 </div>
               </div>
-              {!isMagicWeapon && (
-                <div className="border-t border-border pt-3">
-                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">스공</div>
-                  <div className="mt-1 text-2xl font-semibold text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                    {result.damage.toFixed(1)}
-                  </div>
+              <div className="border-t border-border pt-3">
+                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{isMagicWeapon ? '마력' : '스공'}</div>
+                <div className="mt-1 text-2xl font-semibold text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                  {result.damage.toFixed(1)}
                 </div>
-              )}
+              </div>
               <div className="border-t border-border pt-3 grid grid-cols-2 gap-2 text-sm">
                 <div><span className="text-muted-foreground">버프 공</span><strong className="ml-2">+{result.buffAtk}</strong></div>
                 <div><span className="text-muted-foreground">버프 마</span><strong className="ml-2">+{result.buffMagic}</strong></div>

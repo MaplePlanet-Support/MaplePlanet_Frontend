@@ -21,6 +21,8 @@ export type PresetConfig = {
   sharpEyesLevel: number
   decentSharpEyes: boolean
   babyDragonFood: boolean
+  hontaleVictory?: boolean
+  ammoAtk?: number
   useOverall: boolean
   slots: Record<string, Partial<ItemStatFull>>
   compareSlot: string
