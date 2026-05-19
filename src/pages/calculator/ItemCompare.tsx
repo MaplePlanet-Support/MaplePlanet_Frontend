@@ -417,9 +417,6 @@ export default function ItemCompare() {
       const currentSubStat = effectiveStat(subStat, fSubA, aStatA)
       const topReq1 = Math.min(apTopReq1, currentSubStat)
       const topReq2 = Math.min(apTopReq2, currentSubStat)
-      const needA = apCompareIsTop1
-        ? requiredBaseStat(topReq1, fSubWithoutCurrent, aStatWithoutCurrent)
-        : requiredBaseStat(topReq1, fSubA, aStatA)
       const remainingEquippedReq = apCompareIsTop1 ? topReq2 : topReq1
       const needForCompareItem = requiredBaseStat(apCompareItemReq, fSubWithoutCurrent, aStatWithoutCurrent)
       const needForEquippedItems = requiredBaseStat(remainingEquippedReq, fSubB, aStatB)
