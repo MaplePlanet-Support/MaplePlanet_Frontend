@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem,
@@ -10,7 +9,8 @@ import {
   type WeaponType, type ItemStatFull, type ItemStat,
   type StatCompareResponse, type DamageCompareResponse,
 } from '@/api/calculator'
-import { savePreset, loadPreset, type PresetConfig } from '@/api/preset'
+import { savePreset, loadPreset, resetPresetPassword, type PresetConfig } from '@/api/preset'
+import { Activity, Calculator } from 'lucide-react'
 
 const JOB_STAT: Record<string, string> = {
   전사: 'STR', 마법사: 'INT', 궁수: 'DEX', 도적: 'LUK', '해적(바이퍼)': 'STR', '해적(캡틴)': 'DEX',
@@ -48,8 +48,19 @@ const JOB_DEFAULT_WEAPON: Record<string, WeaponType> = {
   '해적(캡틴)': 'GUN',
 }
 
+const ALL_WEAPON_OPTIONS = [...WEAPON_OPTIONS, ...MAGE_WEAPON_OPTIONS]
+
+const JOB_WEAPONS: Record<string, WeaponType[]> = {
+  전사: ['ONE_HAND_SWORD', 'ONE_HAND_AXE', 'ONE_HAND_BLUNT', 'TWO_HAND_SWORD', 'TWO_HAND_AXE', 'TWO_HAND_BLUNT', 'SPEAR', 'POLEARM'],
+  마법사: ['WAND', 'STAFF'],
+  궁수: ['BOW', 'CROSSBOW'],
+  도적: ['DAGGER', 'CLAW'],
+  '해적(바이퍼)': ['KNUCKLE'],
+  '해적(캡틴)': ['GUN'],
+}
+
 const weaponLabel = (value: WeaponType) =>
-  [...WEAPON_OPTIONS, ...MAGE_WEAPON_OPTIONS].find(o => o.value === value)?.label ?? value
+  ALL_WEAPON_OPTIONS.find(o => o.value === value)?.label ?? value
 
 const JOB_SLOTS = ['모자', '한벌옷', '상의', '하의', '장갑', '신발', '무기', '방패']
 const COMMON_SLOTS = ['귀고리', '망토', '목걸이', '안경', '반지', '벨트', '훈장']
@@ -61,7 +72,79 @@ const emptyFull = (): ItemStatFull => ({
   critRateBonus: 0, totalDmgPercent: 0, bossDmgPercent: 0,
 })
 
+const normalizeFull = (item?: Partial<ItemStatFull>): ItemStatFull => ({
+  ...emptyFull(),
+  ...item,
+})
+
+const normalizeSlots = (slots?: Record<string, Partial<ItemStatFull>>): Record<string, ItemStatFull> =>
+  Object.fromEntries(ALL_SLOTS.map(s => [s, normalizeFull(slots?.[s])]))
+
+const isFlatAtkSlot = (slot: string) => slot === '무기' || slot === '장갑'
+
+const sanitizeFull = (item: ItemStatFull, slot: string): ItemStatFull => {
+  if (slot === '무기') return item
+  return {
+    ...item,
+    flatAtk: isFlatAtkSlot(slot) ? item.flatAtk : 0,
+    atkPercent: 0,
+    critRateBonus: 0,
+    totalDmgPercent: 0,
+    bossDmgPercent: 0,
+  }
+}
+
 type Mode = 1 | 2
+
+const GUIDE: Record<Mode, { summary: string; details: { label: string; desc: string }[] }> = {
+  1: {
+    summary: '주스탯만 있는 아이템을 빠르게 비교할 때 사용합니다.',
+    details: [
+      { label: '현재 장비 스탯', desc: '장착 중인 모든 아이템의 깡스탯 · 스탯%를 슬롯별로 입력하세요.' },
+      { label: '비교 아이템', desc: '교체하려는 아이템의 스탯을 입력하면 주스탯 증감을 즉시 확인할 수 있습니다.' },
+      { label: '프리셋', desc: '닉네임(+선택 비밀번호)으로 현재 설정을 저장·불러올 수 있습니다.' },
+    ],
+  },
+  2: {
+    summary: '스공 · 실제 데미지(보공, 총뎀, 크확 등)까지 정밀하게 비교합니다.',
+    details: [
+      { label: '현재 장비 스탯', desc: '깡스탯·스탯%·올스탯%·공격력·크확·총뎀·보공을 슬롯별로 입력하세요.' },
+      { label: '비교 아이템', desc: '교체하려는 아이템 스탯을 입력하면 스공·실질 데미지 차이를 비율(%)로 확인할 수 있습니다.' },
+      { label: '스킬', desc: '정령의 축복·메용 등 현재 적용 중인 버프 레벨을 입력하세요.' },
+      { label: '프리셋', desc: '닉네임(+선택 비밀번호)으로 현재 설정을 저장·불러올 수 있습니다.' },
+    ],
+  },
+}
+
+function GuidePanel({
+  mode, open, onToggle,
+}: {
+  mode: Mode
+  open: boolean
+  onToggle: () => void
+}) {
+  const g = GUIDE[mode]
+  return (
+    <div className="bg-blue-50 border-b border-blue-100 px-6 py-2.5 flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs font-semibold text-blue-700">이 페이지 사용법 — {g.summary}</div>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="shrink-0 rounded border border-blue-200 bg-white/70 px-2 py-1 text-[11px] font-medium text-blue-700 hover:bg-white"
+        >
+          {open ? '설명 접기' : '설명 펼치기'}
+        </button>
+      </div>
+      {open && g.details.map(({ label, desc }) => (
+        <div key={label} className="flex gap-2 text-xs">
+          <span className="font-semibold text-blue-700 whitespace-nowrap">{label}</span>
+          <span className="text-blue-600">{desc}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function NumInput({
   value, onChange, width = 56, max,
@@ -89,6 +172,14 @@ function levelValue(value: number, max: number) {
   return Math.max(0, Math.min(max, value))
 }
 
+function effectiveStat(base: number, flat: number, percent: number) {
+  return Math.floor((base + flat) * (1 + percent / 100))
+}
+
+function requiredBaseStat(requirement: number, flat: number, percent: number) {
+  return Math.max(0, Math.ceil(requirement / (1 + percent / 100) - flat))
+}
+
 function BuffLabel({ icon, children }: { icon: string; children: React.ReactNode }) {
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -99,42 +190,38 @@ function BuffLabel({ icon, children }: { icon: string; children: React.ReactNode
 }
 
 function ExpectedDmgBlock({
-  title, valA, valB, maxVal, winner,
+  title, valA, valB,
 }: {
-  title: string; valA: number; valB: number; maxVal: number; winner: string | null
+  title: string; valA: number; valB: number
 }) {
+  const diffPct = valA > 0 ? ((valB - valA) / valA) * 100 : 0
+  const positive = diffPct > 0
+  const negative = diffPct < 0
   return (
     <div>
       <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{title}</div>
-      {([['A', '장착중인 비교 아이템'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
-        const val = label === 'A' ? valA : valB
-        const isWin = winner === label
-        return (
-          <div key={label} className="mb-1.5">
-            <div className="flex items-baseline justify-between mb-1">
-              <span className={`text-xs font-medium ${isWin ? 'text-maple' : 'text-muted-foreground'}`}>{displayName} {isWin && '👑'}</span>
-              <span className={`text-lg font-semibold ${isWin ? 'text-maple' : 'text-foreground'}`}
-                style={{ fontFamily: "'JetBrains Mono', monospace" }}>{val.toFixed(1)}</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-300"
-                style={{ width: `${(val / maxVal) * 100}%`, background: isWin ? '#2563EB' : '#d1d5db' }} />
-            </div>
-          </div>
-        )
-      })}
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs text-muted-foreground">비교 아이템 / 장착중인 아이템</span>
+        <span
+          className={`text-2xl font-semibold ${positive ? 'text-win' : negative ? 'text-lose' : 'text-muted-foreground'}`}
+          style={{ fontFamily: "'JetBrains Mono', monospace" }}
+        >
+          {positive ? '+' : ''}{diffPct.toFixed(2)}%
+        </span>
+      </div>
     </div>
   )
 }
 
 export default function ItemCompare() {
-  const [mode, setMode] = useState<Mode>(1)
+  const [mode, setMode] = useState<Mode>(2)
+  const [isGuideOpen, setIsGuideOpen] = useState(true)
   const [job, setJob] = useState('전사')
   const [baseStat, setBaseStat] = useState(0)
   const [subStat, setSubStat] = useState(0)
   const [weaponType, setWeaponType] = useState<WeaponType>('TWO_HAND_SWORD')
+  const [compareWeaponType, setCompareWeaponType] = useState<WeaponType>('TWO_HAND_SWORD')
   const [weaponAtk, setWeaponAtk] = useState(0)
-  const [atkPercent, setAtkPercent] = useState(0)
   const [blessingLevel, setBlessingLevel] = useState(0)
   const [empressBlessingLevel, setEmPressBlessingLevel] = useState(0)
   const [mapleWarriorLevel, setMapleWarriorLevel] = useState(0)
@@ -148,7 +235,7 @@ export default function ItemCompare() {
   const [skillCoeff, setSkillCoeff] = useState(150)
   const [useOverall, setUseOverall] = useState(false)
   const [slots, setSlots] = useState<Record<string, ItemStatFull>>(
-    Object.fromEntries(ALL_SLOTS.map(s => [s, emptyFull()]))
+    normalizeSlots()
   )
   const [compareSlot, setCompareSlot] = useState('모자')
   const [compareItem, setCompareItem] = useState<ItemStatFull>(emptyFull())
@@ -156,21 +243,22 @@ export default function ItemCompare() {
   const [calculating, setCalculating] = useState(false)
 
   const [nickname, setNickname] = useState('')
+  const [password, setPassword] = useState('')
   const [presetMsg, setPresetMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+
+  // AP 재분배 시뮬레이터
+  const [apTopReq1, setApTopReq1] = useState(0)
+  const [apTopReq2, setApTopReq2] = useState(0)
+  const [apCompareItemReq, setApCompareItemReq] = useState(0)
+  const [apCompareIsTop1, setApCompareIsTop1] = useState(false)
+  const [showApDetails, setShowApDetails] = useState(false)
+  const [apResult, setApResult] = useState<DamageCompareResponse | null>(null)
 
   const isMage = job === '마법사'
   const atkColLabel = isMage ? '마력' : '공격력'
   const statLabel = JOB_STAT[job]
   const subLabel = JOB_SUB[job]
-  const weaponOptions = isMage ? MAGE_WEAPON_OPTIONS : WEAPON_OPTIONS
-
-  useEffect(() => {
-    const d = JOB_CRIT[job]
-    setCritRate(d.critRate)
-    setCritDmgPP(d.critDmgPP)
-    setSkillCoeff(JOB_SKILL_COEFF[job] ?? 150)
-    setWeaponType(JOB_DEFAULT_WEAPON[job])
-  }, [job])
+  const weaponOptions = ALL_WEAPON_OPTIONS.filter(o => JOB_WEAPONS[job]?.includes(o.value))
 
   const getActiveSlots = useCallback(
     () => ALL_SLOTS.filter(s => useOverall ? s !== '상의' && s !== '하의' : s !== '한벌옷'),
@@ -186,12 +274,70 @@ export default function ItemCompare() {
     [useOverall, mode]
   )
 
-  useEffect(() => {
-    const active = getActiveSlots()
-    if (!active.includes(compareSlot)) setCompareSlot(active[0])
-  }, [useOverall])
+  function handleJobChange(nextJob: string) {
+    const d = JOB_CRIT[nextJob]
+    setJob(nextJob)
+    setCritRate(d.critRate)
+    setCritDmgPP(d.critDmgPP)
+    setSkillCoeff(JOB_SKILL_COEFF[nextJob] ?? 150)
+    setWeaponType(JOB_DEFAULT_WEAPON[nextJob])
+    setCompareWeaponType(JOB_DEFAULT_WEAPON[nextJob])
+  }
 
-  useEffect(() => { setResult(null) }, [mode])
+  function handleUseOverallChange(checked: boolean) {
+    const active = ALL_SLOTS.filter(s => checked ? s !== '상의' && s !== '하의' : s !== '한벌옷')
+    setUseOverall(checked)
+    setCompareSlot(prev => active.includes(prev) ? prev : active[0])
+  }
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (mode !== 2 || baseStat <= 0 || apTopReq1 <= 0) { setApResult(null); return }
+      const activeSlotsList = getActiveSlots()
+      const fSubA = activeSlotsList.reduce((s, k) => s + slots[k].flatSubStat, 0)
+      const aStatA = activeSlotsList.reduce((s, k) => s + slots[k].allStatPercent, 0)
+      const fSubWithoutCurrent = fSubA - slots[compareSlot].flatSubStat
+      const aStatWithoutCurrent = aStatA - slots[compareSlot].allStatPercent
+      const fSubB = fSubA - slots[compareSlot].flatSubStat + compareItem.flatSubStat
+      const aStatB = aStatA - slots[compareSlot].allStatPercent + compareItem.allStatPercent
+      const currentSubStat = effectiveStat(subStat, fSubA, aStatA)
+      const topReq1 = Math.min(apTopReq1, currentSubStat)
+      const topReq2 = Math.min(apTopReq2, currentSubStat)
+      const needA = apCompareIsTop1
+        ? requiredBaseStat(topReq1, fSubWithoutCurrent, aStatWithoutCurrent)
+        : requiredBaseStat(topReq1, fSubA, aStatA)
+      const remainingEquippedReq = apCompareIsTop1 ? topReq2 : topReq1
+      const needForCompareItem = requiredBaseStat(apCompareItemReq, fSubWithoutCurrent, aStatWithoutCurrent)
+      const needForEquippedItems = requiredBaseStat(remainingEquippedReq, fSubB, aStatB)
+      const needB = Math.max(needForCompareItem, needForEquippedItems)
+      const statShift = needA - needB
+      const redistributedBaseStat = baseStat + statShift
+      const redistributedSubStat = subStat - statShift
+      if (statShift === 0 || redistributedBaseStat < 0 || redistributedSubStat < 0) { setApResult(null); return }
+      try {
+        const isWeapon = compareSlot === '무기'
+        const apiWeaponAtk = isWeapon ? 0 : weaponAtk
+        const res = await damageCompare({
+          job, baseStat: redistributedBaseStat, subStat: redistributedSubStat,
+          weaponType, itemBWeaponType: isWeapon ? compareWeaponType : undefined, weaponAtk: apiWeaponAtk, atkPercent: 0,
+          blessingLevel, empressBlessingLevel, mapleWarriorLevel, meditationLevel, rageLevel,
+          sharpEyesLevel, decentSharpEyes, babyDragonFood, critRate, critDmgPP, skillCoeff,
+          equippedItems: activeSlotsList.map(s => sanitizeFull(slots[s], s)),
+          currentSlotItem: sanitizeFull(slots[compareSlot], compareSlot),
+          itemA: isWeapon ? { ...slots['무기'], flatAtk: weaponAtk } : sanitizeFull(slots[compareSlot] ?? emptyFull(), compareSlot),
+          itemB: sanitizeFull(compareItem, compareSlot),
+        })
+        setApResult(res)
+      } catch { setApResult(null) }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [
+    apTopReq1, apTopReq2, apCompareItemReq, apCompareIsTop1,
+    mode, baseStat, subStat, job, weaponType, compareWeaponType, weaponAtk,
+    blessingLevel, empressBlessingLevel, mapleWarriorLevel, meditationLevel, rageLevel,
+    sharpEyesLevel, decentSharpEyes, babyDragonFood, critRate, critDmgPP, skillCoeff,
+    slots, compareSlot, compareItem, getActiveSlots,
+  ])
 
   function updateSlot(name: string, field: keyof ItemStatFull, value: number) {
     setSlots(prev => ({ ...prev, [name]: { ...prev[name], [field]: value } }))
@@ -226,11 +372,7 @@ export default function ItemCompare() {
     try {
       const equippedFull = activeSlots.map(s => slots[s])
       const currentSlotFull = compareSlot ? slots[compareSlot] : null
-      const sanitizeFull = (item: ItemStatFull, isWeapon: boolean): ItemStatFull => isWeapon
-        ? item
-        : { ...item, flatAtk: 0, atkPercent: 0, critRateBonus: 0, totalDmgPercent: 0, bossDmgPercent: 0 }
-
-      // itemA = 장착중인 비교 아이템 (slots[compareSlot]), itemB = 비교 아이템
+      // itemA = 장착중인 아이템 (slots[compareSlot]), itemB = 비교 아이템
       const currentEquipped = currentSlotFull ?? emptyFull()
 
       if (mode === 1) {
@@ -247,18 +389,18 @@ export default function ItemCompare() {
         })
         setResult(res)
       } else {
-        const equippedDamage = activeSlots.map(s => sanitizeFull(slots[s], s === '무기'))
-        const currentDamage = compareSlot ? sanitizeFull(slots[compareSlot], compareSlot === '무기') : null
+        const equippedDamage = activeSlots.map(s => sanitizeFull(slots[s], s))
+        const currentDamage = compareSlot ? sanitizeFull(slots[compareSlot], compareSlot) : null
         const isWeapon = compareSlot === '무기'
         // 무기 슬롯 비교: mode 2에서 무기 행이 테이블에 없으므로 slots['무기']는 항상 비어있음.
         // weaponAtk(현재 무기 공격력)를 itemA.flatAtk으로 넘기고, API의 weaponAtk=0으로 설정.
         const apiWeaponAtk = isWeapon ? 0 : weaponAtk
         const currentEquippedDamage = isWeapon
           ? { ...slots['무기'], flatAtk: weaponAtk }
-          : sanitizeFull(currentEquipped, false)
-        const compareItemDamage = sanitizeFull(compareItem, isWeapon)
+          : sanitizeFull(currentEquipped, compareSlot)
+        const compareItemDamage = sanitizeFull(compareItem, compareSlot)
         const res = await damageCompare({
-          job, baseStat, subStat, weaponType, weaponAtk: apiWeaponAtk, atkPercent,
+          job, baseStat, subStat, weaponType, itemBWeaponType: isWeapon ? compareWeaponType : undefined, weaponAtk: apiWeaponAtk, atkPercent: 0,
           blessingLevel, empressBlessingLevel,
           mapleWarriorLevel, meditationLevel, rageLevel,
           sharpEyesLevel, decentSharpEyes, babyDragonFood,
@@ -276,12 +418,12 @@ export default function ItemCompare() {
       setCalculating(false)
     }
   }, [
-    mode, job, baseStat, subStat, weaponType, weaponAtk, atkPercent,
+    mode, job, baseStat, subStat, weaponType, compareWeaponType, weaponAtk,
     blessingLevel, empressBlessingLevel,
     mapleWarriorLevel, meditationLevel, rageLevel,
     sharpEyesLevel, decentSharpEyes, babyDragonFood,
     critRate, critDmgPP, skillCoeff,
-    useOverall, slots, compareSlot, compareItem, getActiveSlots,
+    slots, compareSlot, compareItem, getActiveSlots,
   ])
 
   useEffect(() => {
@@ -293,14 +435,14 @@ export default function ItemCompare() {
     if (!nickname.trim()) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
     try {
       const config: PresetConfig = {
-        job, mode, baseStat, subStat, weaponType, weaponAtk, atkPercent,
+        job, mode, baseStat, subStat, weaponType, compareWeaponType, weaponAtk, atkPercent: 0,
         blessingLevel, empressBlessingLevel,
         mapleWarriorLevel, meditationLevel, rageLevel,
         sharpEyesLevel, decentSharpEyes, babyDragonFood,
         critRate, critDmgPP, skillCoeff,
         useOverall, slots, compareSlot, compareItem,
       }
-      const res = await savePreset({ nickname: nickname.trim(), config })
+      const res = await savePreset({ nickname: nickname.trim(), password: password || undefined, config })
       setPresetMsg({ type: 'ok', text: `"${res.nickname}" 저장 완료!` })
     } catch {
       setPresetMsg({ type: 'err', text: '저장 실패. 잠시 후 다시 시도해주세요.' })
@@ -310,10 +452,10 @@ export default function ItemCompare() {
   async function handleLoad() {
     if (!nickname.trim()) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
     try {
-      const res = await loadPreset({ nickname: nickname.trim() })
+      const res = await loadPreset({ nickname: nickname.trim(), password: password || undefined })
       const c = res.config
       setJob(c.job); setMode(c.mode); setBaseStat(c.baseStat); setSubStat(c.subStat)
-      setWeaponType(c.weaponType); setWeaponAtk(c.weaponAtk); setAtkPercent(c.atkPercent)
+      setWeaponType(c.weaponType); setCompareWeaponType(c.compareWeaponType ?? c.weaponType); setWeaponAtk(c.weaponAtk)
       setBlessingLevel(c.blessingLevel); setEmPressBlessingLevel(c.empressBlessingLevel)
       setMapleWarriorLevel(c.mapleWarriorLevel ?? 0)
       setMeditationLevel(c.meditationLevel ?? 0)
@@ -326,12 +468,23 @@ export default function ItemCompare() {
       if (c.critRate !== undefined) setCritRate(c.critRate)
       if (c.critDmgPP !== undefined) setCritDmgPP(c.critDmgPP)
       if (c.skillCoeff !== undefined) setSkillCoeff(c.skillCoeff)
-      setUseOverall(c.useOverall); setSlots(c.slots); setCompareSlot(c.compareSlot)
-      if (c.compareItem !== undefined) setCompareItem(c.compareItem)
+      setUseOverall(c.useOverall); setSlots(normalizeSlots(c.slots)); setCompareSlot(c.compareSlot)
+      setCompareItem(normalizeFull(c.compareItem))
       setPresetMsg({ type: 'ok', text: `"${res.nickname}" 불러오기 완료!` })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : ''
       setPresetMsg({ type: 'err', text: msg.includes('Too many requests') ? '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' : '해당 닉네임을 찾을 수 없습니다.' })
+    }
+  }
+
+  async function handleResetPassword() {
+    if (!nickname.trim()) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
+    try {
+      await resetPresetPassword({ nickname: nickname.trim(), currentPassword: password || undefined })
+      setPassword('')
+      setPresetMsg({ type: 'ok', text: '비밀번호가 초기화되었습니다.' })
+    } catch {
+      setPresetMsg({ type: 'err', text: '비밀번호가 틀렸거나 닉네임을 찾을 수 없습니다.' })
     }
   }
 
@@ -350,17 +503,61 @@ export default function ItemCompare() {
   const expNormalA = result && !isMode1Result(result) ? result.expectedNormalDmgWithItemA : null
   const expNormalB = result && !isMode1Result(result) ? result.expectedNormalDmgWithItemB : null
   const expDiffPct = result && !isMode1Result(result) ? result.expectedDmgDiffPct : null
-  const hasBossDmg = expA !== null && expNormalA !== null && Math.abs(expA - expNormalA) > 0.001
+  const hasBossDmg = (expA !== null && expNormalA !== null && Math.abs(expA - expNormalA) > 0.001)
+    || (expB !== null && expNormalB !== null && Math.abs(expB - expNormalB) > 0.001)
 
   const maxStat = Math.max(statA ?? 0, statB ?? 0, 1)
-  const maxDmg = Math.max(dmgA ?? 0, dmgB ?? 0, 1)
   const maxMagic = Math.max(magicA ?? 0, magicB ?? 0, 1)
-  const maxExp = Math.max(expA ?? 0, expB ?? 0, 1)
-  const maxNormalExp = Math.max(expNormalA ?? 0, expNormalB ?? 0, 1)
 
   const jobSlotRows = getJobSlotRows()
   const activeSlots = getActiveSlots()
   const isWeaponCompare = mode === 2 && compareSlot === '무기'
+  const isFlatAtkCompare = mode === 2 && isFlatAtkSlot(compareSlot)
+  const hasDamageCompareResult = result !== null && !isMode1Result(result)
+
+  // AP 재분배 계산 (디스플레이용)
+  const apFlatSubA = activeSlots.reduce((s, k) => s + slots[k].flatSubStat, 0)
+  const apAllStatA = activeSlots.reduce((s, k) => s + slots[k].allStatPercent, 0)
+  const apFlatSubWithoutCurrent = apFlatSubA - slots[compareSlot].flatSubStat
+  const apAllStatWithoutCurrent = apAllStatA - slots[compareSlot].allStatPercent
+  const apFlatSubB = apFlatSubA - slots[compareSlot].flatSubStat + compareItem.flatSubStat
+  const apAllStatB = apAllStatA - slots[compareSlot].allStatPercent + compareItem.allStatPercent
+  const apCurrentSubStat = effectiveStat(subStat, apFlatSubA, apAllStatA)
+  const apEffectiveTopReq1 = Math.min(apTopReq1, apCurrentSubStat)
+  const apEffectiveTopReq2 = Math.min(apTopReq2, apCurrentSubStat)
+  const apRemainingEquippedReq = apCompareIsTop1 ? apEffectiveTopReq2 : apEffectiveTopReq1
+  const apNeedA = apEffectiveTopReq1 > 0
+    ? apCompareIsTop1
+      ? requiredBaseStat(apEffectiveTopReq1, apFlatSubWithoutCurrent, apAllStatWithoutCurrent)
+      : requiredBaseStat(apEffectiveTopReq1, apFlatSubA, apAllStatA)
+    : 0
+  const apNeedForCompareItem = apEffectiveTopReq1 > 0
+    ? requiredBaseStat(apCompareItemReq, apFlatSubWithoutCurrent, apAllStatWithoutCurrent)
+    : 0
+  const apNeedForEquippedItems = apEffectiveTopReq1 > 0
+    ? requiredBaseStat(apRemainingEquippedReq, apFlatSubB, apAllStatB)
+    : 0
+  const apNeedB = Math.max(apNeedForCompareItem, apNeedForEquippedItems)
+  const apEffReq = Math.max(apRemainingEquippedReq, apCompareItemReq)
+  const apStatShift = apNeedA - apNeedB
+  const apShiftAbs = Math.abs(apStatShift)
+  const apRedistributedBaseStat = baseStat + apStatShift
+  const apRedistributedSubStat = subStat - apStatShift
+  const canShowApRedistribution = apEffectiveTopReq1 > 0 && apStatShift !== 0 && apRedistributedBaseStat >= 0 && apRedistributedSubStat >= 0
+  const apHasRequirement = apTopReq1 > 0
+  const apSummaryTone = apStatShift > 0 ? 'text-win' : apStatShift < 0 ? 'text-lose' : 'text-muted-foreground'
+  const apSummaryText = !apHasRequirement
+    ? `${subLabel} 요구치를 입력하면 AP 전후 변화가 계산됩니다.`
+    : apStatShift > 0
+      ? `순수 ${subLabel} ${apShiftAbs} 절감 가능`
+      : apStatShift < 0
+        ? `순수 ${subLabel} ${apShiftAbs} 추가 필요`
+        : `재분배가 필요한 순수 ${subLabel} 변화가 없습니다.`
+  const apRedistributionText = apStatShift > 0
+    ? `순수 ${statLabel} +${apShiftAbs} / 순수 ${subLabel} -${apShiftAbs}`
+    : apStatShift < 0
+      ? `순수 ${statLabel} -${apShiftAbs} / 순수 ${subLabel} +${apShiftAbs}`
+      : `순수 ${statLabel}, ${subLabel} 변화 없음`
 
   return (
     <div
@@ -373,13 +570,37 @@ export default function ItemCompare() {
           <div className="text-[11px] text-muted-foreground tracking-widest uppercase">PlanetCompare</div>
           <div className="text-lg font-semibold text-foreground leading-tight">아이템 비교</div>
         </div>
-        <Tabs value={String(mode)} onValueChange={v => setMode(Number(v) as Mode)}>
-          <TabsList>
-            <TabsTrigger value="1">단순 스탯 비교</TabsTrigger>
-            <TabsTrigger value="2">스공&실제 데미지 비교</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex gap-2">
+          {([
+            { value: 2, label: '스공 & 실제 데미지 비교', Icon: Activity },
+            { value: 1, label: '단순 스탯 비교', Icon: Calculator },
+          ] as const).map(({ value, label, Icon }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setMode(value)
+                setResult(null)
+              }}
+              className={`inline-flex h-9 items-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors ${
+                mode === value
+                  ? 'bg-maple text-white shadow-sm'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+              }`}
+            >
+              <Icon className="size-4" aria-hidden="true" />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* 가이드라인 */}
+      <GuidePanel
+        mode={mode}
+        open={isGuideOpen}
+        onToggle={() => setIsGuideOpen(open => !open)}
+      />
 
       <div className="grid grid-cols-1 gap-4 p-3 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-4 lg:items-start">
 
@@ -388,39 +609,32 @@ export default function ItemCompare() {
 
           {/* 캐릭터 */}
           <section>
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">캐릭터</div>
-              <span className="text-xs text-muted-foreground">주스탯: {statLabel}</span>
-            </div>
-            <div className="flex flex-wrap gap-4 items-end">
-              <div className="flex flex-col gap-1">
-                <Label className="text-xs">직업</Label>
-                <Select value={job} onValueChange={v => v && setJob(v)}>
-                  <SelectTrigger className="h-8 w-36 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.keys(JOB_STAT).map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label className="text-xs">{statLabel}</Label>
-                <NumInput value={baseStat} onChange={setBaseStat} width={88} />
-              </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">캐릭터</span>
+              <Select value={job} onValueChange={v => v && handleJobChange(v)}>
+                <SelectTrigger className="h-7 w-32 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.keys(JOB_STAT).map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-muted-foreground">{statLabel}</span>
+              <NumInput value={baseStat} onChange={setBaseStat} width={72} />
               {mode === 2 && (
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs">{subLabel}</Label>
-                  <NumInput value={subStat} onChange={setSubStat} width={88} />
-                </div>
+                <>
+                  <span className="text-xs text-muted-foreground">{subLabel}</span>
+                  <NumInput value={subStat} onChange={setSubStat} width={72} />
+                </>
               )}
+              <span className="text-xs text-muted-foreground">순수 스탯만 입력</span>
             </div>
           </section>
 
           {/* 장비 스탯 */}
           <section>
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">현재 장비 스탯</div>
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-                <input type="checkbox" checked={useOverall} onChange={e => setUseOverall(e.target.checked)} className="sr-only" />
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">현재 장비 스탯</span>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none shrink-0">
+                <input type="checkbox" checked={useOverall} onChange={e => handleUseOverallChange(e.target.checked)} className="sr-only" />
                 <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${useOverall ? 'bg-maple border-maple' : 'border-border bg-white'}`}>
                   {useOverall && <span className="text-white text-[10px] leading-none">✓</span>}
                 </div>
@@ -441,6 +655,9 @@ export default function ItemCompare() {
                       )}
                       <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
                       <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯 %</th>
+                      {mode === 2 && (
+                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -461,6 +678,15 @@ export default function ItemCompare() {
                         <td className="border border-border px-1 py-0.5 text-center">
                           <NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={68} />
                         </td>
+                        {mode === 2 && (
+                          <td className="border border-border px-1 py-0.5 text-center">
+                            {isFlatAtkSlot(s) ? (
+                              <NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={68} />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -547,12 +773,6 @@ export default function ItemCompare() {
                     <NumInput value={slots['무기'].bossDmgPercent} onChange={v => updateSlot('무기', 'bossDmgPercent', v)} width={68} />
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-4 items-end">
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">{atkColLabel}% (비교슬롯 제외, 무기 외 장비)</Label>
-                    <NumInput value={atkPercent} onChange={setAtkPercent} width={84} />
-                  </div>
-                </div>
               </div>
             )}
           </section>
@@ -575,17 +795,18 @@ export default function ItemCompare() {
                 <span className="text-[11px] text-muted-foreground">
                   현재: {statLabel} {slots[compareSlot].flatStat} / {statLabel}% {slots[compareSlot].statPercent}
                   {mode === 2 && !isWeaponCompare && ` / ${subLabel} ${slots[compareSlot].flatSubStat}`}
+                  {mode === 2 && !isWeaponCompare && isFlatAtkCompare && ` / ${atkColLabel} ${slots[compareSlot].flatAtk}`}
                   {isWeaponCompare && ` / ${atkColLabel} ${weaponAtk}`}
                 </span>
               )}
             </div>
 
             <div className="flex flex-col gap-3">
-              {/* 장착중인 비교 아이템 (읽기 전용 요약) */}
+              {/* 장착중인 아이템 (읽기 전용 요약) */}
               {compareSlot && (
                 <div className="border rounded-md p-3 bg-muted/20 flex flex-col gap-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-muted-foreground">장착중인 비교 아이템</span>
+                    <span className="text-sm font-semibold text-muted-foreground">장착중인 아이템</span>
                     {statA !== null && (
                       <span className="text-xs text-muted-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                         {statA.toFixed(1)} {statLabel}
@@ -595,6 +816,7 @@ export default function ItemCompare() {
                   <div className="text-xs text-muted-foreground">
                     {statLabel} {slots[compareSlot].flatStat} / {statLabel}% {slots[compareSlot].statPercent}
                     {mode === 2 && ` / ${subLabel} ${slots[compareSlot].flatSubStat}`}
+                    {mode === 2 && !isWeaponCompare && isFlatAtkCompare && ` / ${atkColLabel} ${slots[compareSlot].flatAtk}`}
                     {isWeaponCompare && ` / ${atkColLabel} ${weaponAtk} / ${atkColLabel}% ${slots[compareSlot].atkPercent} / 크확% ${slots[compareSlot].critRateBonus} / 총뎀% ${slots[compareSlot].totalDmgPercent} / 보공% ${slots[compareSlot].bossDmgPercent}`}
                   </div>
                 </div>
@@ -608,6 +830,13 @@ export default function ItemCompare() {
                   <span className={`text-sm font-semibold ${winner === 'B' ? 'text-maple' : 'text-foreground'}`}>
                     비교 아이템 {winner === 'B' && '👑'}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setCompareItem(emptyFull())}
+                    className="h-7 rounded border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    초기화
+                  </button>
                   {statB !== null && (
                     <span className={`text-xs ${winner === 'B' ? 'text-maple' : 'text-muted-foreground'}`}
                       style={{ fontFamily: "'JetBrains Mono', monospace" }}>
@@ -616,56 +845,101 @@ export default function ItemCompare() {
                   )}
                 </div>
 
-                {/* 스탯 행 */}
-                <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-                  <div className="flex flex-col gap-0.5">
-                    <Label className="text-[10px] text-muted-foreground">{statLabel}</Label>
-                    <NumInput value={compareItem.flatStat} onChange={v => setCompareItem({ ...compareItem, flatStat: v })} max={1000} width={68} />
-                  </div>
-                  {mode === 2 && (
-                    <div className="flex flex-col gap-0.5">
-                      <Label className="text-[10px] text-muted-foreground">{subLabel}</Label>
-                      <NumInput value={compareItem.flatSubStat} onChange={v => setCompareItem({ ...compareItem, flatSubStat: v })} max={1000} width={68} />
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-0.5">
-                    <Label className="text-[10px] text-muted-foreground">{statLabel}%</Label>
-                    <NumInput value={compareItem.statPercent} onChange={v => setCompareItem({ ...compareItem, statPercent: v })} max={1000} width={68} />
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <Label className="text-[10px] text-muted-foreground">올스탯 %</Label>
-                    <NumInput value={compareItem.allStatPercent} onChange={v => setCompareItem({ ...compareItem, allStatPercent: v })} max={1000} width={68} />
-                  </div>
-                </div>
-
-                {isWeaponCompare && (
+                {isWeaponCompare ? (
                   <>
-                    {/* 공격력/마력 행 */}
+                    {/* 1. 무기 종류 */}
                     <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+                      <div className="flex flex-col gap-0.5">
+                        <Label className="text-[10px] text-muted-foreground">무기 종류</Label>
+                        <Select value={compareWeaponType} onValueChange={v => setCompareWeaponType(v as WeaponType)}>
+                          <SelectTrigger className="h-7 w-28 text-xs"><SelectValue>{weaponLabel(compareWeaponType)}</SelectValue></SelectTrigger>
+                          <SelectContent>
+                            {weaponOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* 2. 주스탯, 부스탯, 공격력 */}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+                      <div className="flex flex-col gap-0.5">
+                        <Label className="text-[10px] text-muted-foreground">{statLabel}</Label>
+                        <NumInput value={compareItem.flatStat} onChange={v => setCompareItem({ ...compareItem, flatStat: v })} max={1000} width={68} />
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <Label className="text-[10px] text-muted-foreground">{subLabel}</Label>
+                        <NumInput value={compareItem.flatSubStat} onChange={v => setCompareItem({ ...compareItem, flatSubStat: v })} max={1000} width={68} />
+                      </div>
                       <div className="flex flex-col gap-0.5">
                         <Label className="text-[10px] text-muted-foreground">{atkColLabel}</Label>
                         <NumInput value={compareItem.flatAtk} onChange={v => setCompareItem({ ...compareItem, flatAtk: v })} max={1000} width={68} />
                       </div>
+                    </div>
+
+                    {/* 3. 공격력%, 보공%, 총뎀% */}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1.5">
                       <div className="flex flex-col gap-0.5">
                         <Label className="text-[10px] text-muted-foreground">{atkColLabel}%</Label>
                         <NumInput value={compareItem.atkPercent} onChange={v => setCompareItem({ ...compareItem, atkPercent: v })} max={1000} width={68} />
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <Label className="text-[10px] text-muted-foreground">보공%</Label>
+                        <NumInput value={compareItem.bossDmgPercent} onChange={v => setCompareItem({ ...compareItem, bossDmgPercent: v })} max={1000} width={68} />
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <Label className="text-[10px] text-muted-foreground">총뎀%</Label>
+                        <NumInput value={compareItem.totalDmgPercent} onChange={v => setCompareItem({ ...compareItem, totalDmgPercent: v })} max={1000} width={68} />
+                      </div>
+                    </div>
+
+                    {/* 4. 스탯%, 나머지 % */}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+                      <div className="flex flex-col gap-0.5">
+                        <Label className="text-[10px] text-muted-foreground">{statLabel}%</Label>
+                        <NumInput value={compareItem.statPercent} onChange={v => setCompareItem({ ...compareItem, statPercent: v })} max={1000} width={68} />
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <Label className="text-[10px] text-muted-foreground">올스탯 %</Label>
+                        <NumInput value={compareItem.allStatPercent} onChange={v => setCompareItem({ ...compareItem, allStatPercent: v })} max={1000} width={68} />
                       </div>
                       <div className="flex flex-col gap-0.5">
                         <Label className="text-[10px] text-muted-foreground">크확%</Label>
                         <NumInput value={compareItem.critRateBonus} onChange={v => setCompareItem({ ...compareItem, critRateBonus: v })} max={1000} width={68} />
                       </div>
                     </div>
-                    {/* 데미지 배율 행 */}
+                  </>
+                ) : (
+                  <>
+                    {/* 스탯 행 */}
                     <div className="flex flex-wrap gap-x-3 gap-y-1.5">
                       <div className="flex flex-col gap-0.5">
-                        <Label className="text-[10px] text-muted-foreground">총뎀%</Label>
-                        <NumInput value={compareItem.totalDmgPercent} onChange={v => setCompareItem({ ...compareItem, totalDmgPercent: v })} max={1000} width={68} />
+                        <Label className="text-[10px] text-muted-foreground">{statLabel}</Label>
+                        <NumInput value={compareItem.flatStat} onChange={v => setCompareItem({ ...compareItem, flatStat: v })} max={1000} width={68} />
+                      </div>
+                      {mode === 2 && (
+                        <div className="flex flex-col gap-0.5">
+                          <Label className="text-[10px] text-muted-foreground">{subLabel}</Label>
+                          <NumInput value={compareItem.flatSubStat} onChange={v => setCompareItem({ ...compareItem, flatSubStat: v })} max={1000} width={68} />
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-0.5">
+                        <Label className="text-[10px] text-muted-foreground">{statLabel}%</Label>
+                        <NumInput value={compareItem.statPercent} onChange={v => setCompareItem({ ...compareItem, statPercent: v })} max={1000} width={68} />
                       </div>
                       <div className="flex flex-col gap-0.5">
-                        <Label className="text-[10px] text-muted-foreground">보공%</Label>
-                        <NumInput value={compareItem.bossDmgPercent} onChange={v => setCompareItem({ ...compareItem, bossDmgPercent: v })} max={1000} width={68} />
+                        <Label className="text-[10px] text-muted-foreground">올스탯 %</Label>
+                        <NumInput value={compareItem.allStatPercent} onChange={v => setCompareItem({ ...compareItem, allStatPercent: v })} max={1000} width={68} />
                       </div>
                     </div>
+
+                    {isFlatAtkCompare && (
+                      <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+                        <div className="flex flex-col gap-0.5">
+                          <Label className="text-[10px] text-muted-foreground">{atkColLabel}</Label>
+                          <NumInput value={compareItem.flatAtk} onChange={v => setCompareItem({ ...compareItem, flatAtk: v })} max={1000} width={68} />
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -691,7 +965,7 @@ export default function ItemCompare() {
               {/* 주스탯 */}
               <div className="flex flex-col gap-2">
                 <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{statLabel} (주스탯)</div>
-                {([['A', '장착중인 비교 아이템'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
+                {([['A', '장착중인 아이템'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
                   const val = label === 'A' ? statA : statB
                   const isWin = winner === label
                   return (
@@ -739,7 +1013,7 @@ export default function ItemCompare() {
                         return (
                           <div key={label}>
                             <div className="flex items-baseline justify-between mb-1">
-                              <span className={`text-xs font-medium ${isWin ? 'text-maple' : 'text-muted-foreground'}`}>{label === 'A' ? '장착중인 비교 아이템' : '비교 아이템'}</span>
+                              <span className={`text-xs font-medium ${isWin ? 'text-maple' : 'text-muted-foreground'}`}>{label === 'A' ? '장착중인 아이템' : '비교 아이템'}</span>
                               <span className={`text-lg font-semibold ${isWin ? 'text-maple' : 'text-foreground'}`}
                                 style={{ fontFamily: "'JetBrains Mono', monospace" }}>{val.toFixed(0)}</span>
                             </div>
@@ -753,25 +1027,23 @@ export default function ItemCompare() {
                     </div>
                   )}
 
-                  {/* 스공 / 기본데미지 */}
-                  {dmgA !== null && dmgB !== null && (
+                  {/* 스공 (비마법사 전용) */}
+                  {!isMage && dmgA !== null && dmgB !== null && (
                     <div className="border-t border-border pt-3 flex flex-col gap-2">
-                      <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                        {isMage ? '기본 데미지' : '스공'}
-                      </div>
-                      {([['A', '장착중인 비교 아이템'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
-                        const dmg = label === 'A' ? dmgA : dmgB
+                      <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">스공</div>
+                      {([['A', '장착중인 아이템'], ['B', '비교 아이템']] as const).map(([label, displayName]) => {
+                        const val = label === 'A' ? dmgA : dmgB
                         const isWin = winner === label
                         return (
                           <div key={label}>
                             <div className="flex items-baseline justify-between mb-1">
                               <span className={`text-xs font-medium ${isWin ? 'text-maple' : 'text-muted-foreground'}`}>{displayName}</span>
                               <span className={`text-lg font-semibold ${isWin ? 'text-maple' : 'text-foreground'}`}
-                                style={{ fontFamily: "'JetBrains Mono', monospace" }}>{dmg.toFixed(1)}</span>
+                                style={{ fontFamily: "'JetBrains Mono', monospace" }}>{val.toFixed(1)}</span>
                             </div>
                             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                               <div className="h-full rounded-full transition-all duration-300"
-                                style={{ width: `${(dmg / maxDmg) * 100}%`, background: isWin ? '#2563EB' : '#d1d5db' }} />
+                                style={{ width: `${(val / Math.max(dmgA, dmgB, 1)) * 100}%`, background: isWin ? '#2563EB' : '#d1d5db' }} />
                             </div>
                           </div>
                         )
@@ -786,20 +1058,37 @@ export default function ItemCompare() {
                       <ExpectedDmgBlock
                         title="실질 데미지 — 일반 몬스터"
                         valA={expNormalA} valB={expNormalB}
-                        maxVal={maxNormalExp} winner={winner}
                       />
                       {/* 보스 몬스터 (보공이 있을 때만) */}
                       {hasBossDmg && (
                         <ExpectedDmgBlock
                           title="실질 데미지 — 보스 몬스터"
                           valA={expA} valB={expB}
-                          maxVal={maxExp} winner={winner}
                         />
+                      )}
+                      {/* INT / 총마력 수치 비교 (마법사) */}
+                      {isMage && statA !== null && statB !== null && magicA !== null && magicB !== null && (
+                        <div className="rounded-md bg-muted/30 px-3 py-2 flex flex-col gap-1 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">INT 차이</span>
+                            <span className={`font-semibold ${statB - statA > 0 ? 'text-win' : statB - statA < 0 ? 'text-lose' : 'text-muted-foreground'}`}
+                              style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                              {statB - statA >= 0 ? '+' : ''}{(statB - statA).toFixed(1)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">총마력 차이</span>
+                            <span className={`font-semibold ${magicB - magicA > 0 ? 'text-win' : magicB - magicA < 0 ? 'text-lose' : 'text-muted-foreground'}`}
+                              style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                              {magicB - magicA >= 0 ? '+' : ''}{(magicB - magicA).toFixed(0)}
+                            </span>
+                          </div>
+                        </div>
                       )}
                       {/* 승자 배너 */}
                       <div className={`rounded-md px-3 py-2 text-sm font-medium ${winner === 'SAME' ? 'bg-muted/40 text-muted-foreground' : 'bg-win-bg text-foreground'}`}>
                         {winner === 'SAME' ? '두 아이템이 동일합니다' : (
-                          <><span className="text-maple font-semibold">{winner === 'B' ? '비교 아이템' : '장착중인 비교 아이템'}</span>이{' '}
+                          <><span className="text-maple font-semibold">{winner === 'B' ? '비교 아이템' : '장착중인 아이템'}</span>이{' '}
                           <span className="text-win font-semibold">{Math.abs(expDiffPct).toFixed(2)}%</span> 더 강함
                           {hasBossDmg && <span className="text-muted-foreground text-xs ml-1">(보스 기준)</span>}</>
                         )}
@@ -815,6 +1104,17 @@ export default function ItemCompare() {
             <div className="border-t border-border pt-4">
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">스킬</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBlessingLevel(0); setEmPressBlessingLevel(0); setMapleWarriorLevel(0)
+                    setMeditationLevel(0); setRageLevel(0); setSharpEyesLevel(0)
+                    setDecentSharpEyes(false); setBabyDragonFood(false)
+                  }}
+                  className="text-[10px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  초기화
+                </button>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div className="flex flex-col gap-1">
@@ -880,6 +1180,11 @@ export default function ItemCompare() {
                 onChange={e => setNickname(e.target.value)}
                 className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
               />
+              <input
+                type="password" placeholder="비밀번호 (선택)" value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+              />
             </div>
             <div className="flex gap-1.5">
               <button onClick={handleSave}
@@ -890,12 +1195,332 @@ export default function ItemCompare() {
                 className="h-7 flex-1 rounded border border-border bg-background text-xs font-medium hover:bg-muted transition-colors">
                 불러오기
               </button>
+              <button onClick={handleResetPassword}
+                className="h-7 flex-1 rounded border border-border bg-background text-xs font-medium hover:bg-muted transition-colors">
+                비번 초기화
+              </button>
             </div>
             {presetMsg && (
               <p className={`text-xs ${presetMsg.type === 'ok' ? 'text-win' : 'text-lose'}`}>{presetMsg.text}</p>
             )}
           </div>
         </div>
+      </div>
+
+      {/* ── AP 재분배 시뮬레이터 ── */}
+      <div className="mx-3 mb-4 lg:mx-4 bg-white rounded-xl border border-black/8 shadow-sm p-4 sm:p-5 flex flex-col gap-4">
+        <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">AP 재분배 시뮬레이터</span>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className={`text-lg font-semibold ${apSummaryTone}`}>{apSummaryText}</span>
+              {apHasRequirement && <span className="text-sm text-muted-foreground">{apRedistributionText}</span>}
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-xs lg:min-w-[360px]">
+            <div className="rounded-md bg-muted/30 px-3 py-2">
+              <div className="text-[10px] text-muted-foreground">현재 최종 {subLabel}</div>
+              <div className="text-base font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{apCurrentSubStat}</div>
+            </div>
+            <div className="rounded-md bg-muted/30 px-3 py-2">
+              <div className="text-[10px] text-muted-foreground">순수 {statLabel}</div>
+              <div className="text-base font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                {baseStat} → {canShowApRedistribution ? apRedistributedBaseStat : baseStat}
+              </div>
+            </div>
+            <div className="rounded-md bg-muted/30 px-3 py-2">
+              <div className="text-[10px] text-muted-foreground">순수 {subLabel}</div>
+              <div className="text-base font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                {subStat} → {canShowApRedistribution ? apRedistributedSubStat : subStat}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 요구치 입력 */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <p className="text-xs text-muted-foreground leading-relaxed lg:max-w-3xl">
+            현재 장착 중인 아이템들의 <strong>{subLabel} 요구치</strong>를 높은 순서대로 입력하세요.
+            비교 슬롯의 아이템이 1위라면 체크하세요 — 해당 아이템을 교체하면 1위 요구치가 사라지므로, 2위와 비교 아이템 요구치 중 더 높은 값이 기준이 됩니다.
+          </p>
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">1위 요구 {subLabel}</Label>
+              <NumInput value={apTopReq1} onChange={setApTopReq1} width={72} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">2위 요구 {subLabel}</Label>
+              <NumInput value={apTopReq2} onChange={setApTopReq2} width={72} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">비교 아이템 요구 {subLabel}</Label>
+              <NumInput value={apCompareItemReq} onChange={setApCompareItemReq} width={72} />
+            </div>
+            <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none pb-1">
+              <input type="checkbox" checked={apCompareIsTop1} onChange={e => setApCompareIsTop1(e.target.checked)} />
+              <span className="text-muted-foreground">비교 슬롯이 1위 아이템</span>
+            </label>
+          </div>
+        </div>
+
+        {/* 계산 결과 */}
+        {apTopReq1 > 0 && (
+          <div className="rounded-lg bg-muted/30 px-4 py-3 flex flex-col gap-2 text-sm">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
+              <span className="text-muted-foreground">
+                현재 최종 {subLabel}: <strong className="text-foreground">{apCurrentSubStat}</strong>
+              </span>
+              <span className="text-muted-foreground">
+                교체 전 기준 요구치: <strong className="text-foreground">{apEffectiveTopReq1} {subLabel}</strong>
+                {' '}→ 필요 순수 {subLabel}: <strong className="text-foreground">{apNeedA}</strong>
+              </span>
+              <span className="text-muted-foreground">
+                교체 후 기준 요구치: <strong className="text-foreground">{apEffReq} {subLabel}</strong>
+                {' '}→ 필요 순수 {subLabel}: <strong className="text-foreground">{apNeedB}</strong>
+              </span>
+            </div>
+            {(apTopReq1 > apCurrentSubStat || apTopReq2 > apCurrentSubStat) && (
+              <div className="text-xs text-lose">
+                현재 최종 {subLabel}를 넘는 기존 장비 요구치는 계산에서 {apCurrentSubStat}로 보정됩니다.
+              </div>
+            )}
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+              <span>
+                비교 아이템 장착 조건: <strong className="text-foreground">{apNeedForCompareItem}</strong>
+                <span className="ml-1">(비교 아이템 스탯 제외)</span>
+              </span>
+              <span>
+                장착 후 기존 장비 조건: <strong className="text-foreground">{apNeedForEquippedItems}</strong>
+                <span className="ml-1">(비교 아이템 스탯 포함)</span>
+              </span>
+            </div>
+            {apStatShift > 0 ? (
+              <div className="text-sm font-semibold text-win">
+                순수 {subLabel} {apShiftAbs} 절감 가능 → 순수 {statLabel} +{apShiftAbs} 전환
+              </div>
+            ) : apStatShift < 0 ? (
+              <div className="text-sm font-semibold text-lose">
+                순수 {subLabel} {apShiftAbs} 추가 필요 → 순수 {statLabel} -{apShiftAbs} 전환
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                재분배가 필요한 순수 {subLabel} 변화가 없습니다.
+              </div>
+            )}
+            {apStatShift < 0 && apRedistributedBaseStat < 0 && (
+              <div className="text-xs text-lose">
+                전환 가능한 순수 {statLabel}이 부족합니다.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* AP 재분배 후 데미지 재비교 */}
+        {canShowApRedistribution && hasDamageCompareResult && (
+          <div className="border-t border-border pt-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">재분배 후 데미지 재비교</span>
+              <span className="text-xs text-muted-foreground">
+                순수 {statLabel} {baseStat} → {apRedistributedBaseStat} / 순수 {subLabel} {subStat} → {apRedistributedSubStat}
+              </span>
+            </div>
+            {apResult === null ? (
+              <p className="text-xs text-muted-foreground">계산 중…</p>
+              ) : (
+              <div className="flex flex-col gap-3">
+                {(() => {
+                  const rows = ([
+                    { label: '장착중인 아이템', pick: 'A' },
+                    { label: '비교 아이템', pick: 'B' },
+                  ] as const).map(({ label, pick }) => {
+                    const beforeStat = pick === 'A' ? result.statWithItemA : result.statWithItemB
+                    const afterStat = pick === 'A' ? apResult.statWithItemA : apResult.statWithItemB
+                    const beforePower = pick === 'A' ? result.damageWithItemA : result.damageWithItemB
+                    const afterPower = pick === 'A' ? apResult.damageWithItemA : apResult.damageWithItemB
+                    const beforeNormal = pick === 'A' ? result.expectedNormalDmgWithItemA : result.expectedNormalDmgWithItemB
+                    const afterNormal = pick === 'A' ? apResult.expectedNormalDmgWithItemA : apResult.expectedNormalDmgWithItemB
+                    const beforeBoss = pick === 'A' ? result.expectedDmgWithItemA : result.expectedDmgWithItemB
+                    const afterBoss = pick === 'A' ? apResult.expectedDmgWithItemA : apResult.expectedDmgWithItemB
+                    const useBoss = Math.abs(beforeBoss - beforeNormal) > 0.001 || Math.abs(afterBoss - afterNormal) > 0.001
+                    const beforeExpected = useBoss ? beforeBoss : beforeNormal
+                    const afterExpected = useBoss ? afterBoss : afterNormal
+                    return {
+                      label,
+                      useBoss,
+                      beforeStat,
+                      afterStat,
+                      beforePower,
+                      afterPower,
+                      beforeExpected,
+                      afterExpected,
+                      statDelta: afterStat - beforeStat,
+                      powerDelta: afterPower - beforePower,
+                      expectedDelta: afterExpected - beforeExpected,
+                    }
+                  })
+                  const valueClass = (value: number) => value > 0 ? 'text-win' : value < 0 ? 'text-lose' : 'text-muted-foreground'
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                        {([
+                          {
+                            step: '1',
+                            title: 'AP 적용 전',
+                            note: `순수 ${statLabel} ${baseStat} / 순수 ${subLabel} ${subStat}`,
+                            stat: (row: typeof rows[number]) => row.beforeStat,
+                            power: (row: typeof rows[number]) => row.beforePower,
+                            expected: (row: typeof rows[number]) => row.beforeExpected,
+                          },
+                          {
+                            step: '2',
+                            title: 'AP 적용 후',
+                            note: `순수 ${statLabel} ${apRedistributedBaseStat} / 순수 ${subLabel} ${apRedistributedSubStat}`,
+                            stat: (row: typeof rows[number]) => row.afterStat,
+                            power: (row: typeof rows[number]) => row.afterPower,
+                            expected: (row: typeof rows[number]) => row.afterExpected,
+                          },
+                        ] as const).map(stage => (
+                          <div key={stage.step} className="rounded-lg bg-muted/30 px-3 py-3 flex flex-col gap-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[11px] font-semibold text-background">
+                                  {stage.step}
+                                </span>
+                                <span className="text-sm font-semibold text-foreground">{stage.title}</span>
+                              </div>
+                              <span className="text-[11px] text-muted-foreground">{stage.note}</span>
+                            </div>
+                            <div className="overflow-hidden rounded-md border border-border bg-white/70">
+                              <div className="grid grid-cols-[1.1fr_0.9fr_0.9fr_0.9fr] border-b border-border bg-muted/40 px-2 py-1.5 text-[10px] font-semibold text-muted-foreground">
+                                <span>아이템</span>
+                                <span className="text-right">{statLabel}</span>
+                                <span className="text-right">스공</span>
+                                <span className="text-right">실질 데미지</span>
+                              </div>
+                              {rows.map(row => (
+                                <div key={row.label} className="grid grid-cols-[1.1fr_0.9fr_0.9fr_0.9fr] items-center border-b border-border/70 px-2 py-2 text-xs last:border-b-0">
+                                  <span className="font-medium text-foreground">{row.label}{row.useBoss && <span className="ml-1 text-[10px] text-muted-foreground">(보스)</span>}</span>
+                                  <span className="text-right font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{stage.stat(row).toFixed(1)}</span>
+                                  <span className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{stage.power(row).toFixed(1)}</span>
+                                  <span className="text-right" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{stage.expected(row).toFixed(1)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="rounded-lg bg-win-bg/70 px-3 py-3 flex flex-col gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[11px] font-semibold text-background">3</span>
+                            <span className="text-sm font-semibold text-foreground">AP 변화 결과</span>
+                          </div>
+                          <span className={`text-sm font-semibold ${apStatShift > 0 ? 'text-win' : 'text-lose'}`}>
+                            순수 {statLabel} {apStatShift >= 0 ? '+' : ''}{apStatShift} / 순수 {subLabel} {(-apStatShift) >= 0 ? '+' : ''}{-apStatShift}
+                          </span>
+                        </div>
+                        <div className="overflow-hidden rounded-md border border-border bg-white/70">
+                          <div className="grid grid-cols-[1.1fr_0.9fr_0.9fr] border-b border-border bg-muted/40 px-2 py-1.5 text-[10px] font-semibold text-muted-foreground">
+                            <span>아이템</span>
+                            <span className="text-right">스공 변화</span>
+                            <span className="text-right">실질 데미지 변화</span>
+                          </div>
+                          {rows.map(row => (
+                            <div key={row.label} className="grid grid-cols-[1.1fr_0.9fr_0.9fr] items-center border-b border-border/70 px-2 py-2 text-xs last:border-b-0">
+                              <span className="font-medium text-foreground">{row.label}</span>
+                              <span className={`text-right font-semibold ${valueClass(row.powerDelta)}`} style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                                {row.powerDelta >= 0 ? '+' : ''}{row.powerDelta.toFixed(1)}
+                              </span>
+                              <span className={`text-right font-semibold ${valueClass(row.expectedDelta)}`} style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                                {row.expectedDelta >= 0 ? '+' : ''}{row.expectedDelta.toFixed(1)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )
+                })()}
+                <div className="flex items-center justify-between border-t border-border pt-3">
+                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">상세 A/B 비교</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowApDetails(open => !open)}
+                    className="h-7 rounded border border-border bg-background px-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    {showApDetails ? '상세 접기' : '상세 보기'}
+                  </button>
+                </div>
+                {showApDetails && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {([
+                  { label: '기존 비교', r: result },
+                  { label: 'AP 재분배 후', r: apResult },
+                ] as const).map(({ label, r }) => {
+                  const eA = r.expectedDmgWithItemA
+                  const eB = r.expectedDmgWithItemB
+                  const eNA = r.expectedNormalDmgWithItemA
+                  const eNB = r.expectedNormalDmgWithItemB
+                  const useBoss = Math.abs(eA - eNA) > 0.001 || Math.abs(eB - eNB) > 0.001
+                  const vA = useBoss ? eA : eNA
+                  const vB = useBoss ? eB : eNB
+                  const diff = vA > 0 ? ((vB - vA) / vA) * 100 : 0
+                  const displayStatA = Number(r.statWithItemA.toFixed(1))
+                  const displayStatB = Number(r.statWithItemB.toFixed(1))
+                  const statDiff = displayStatB - displayStatA
+                  return (
+                    <div key={label} className="rounded-lg bg-muted/30 px-3 py-2 flex flex-col gap-1">
+                      <div className="text-[11px] font-semibold text-muted-foreground">{label}{useBoss && ' (보스 기준)'}</div>
+                      <div className="grid grid-cols-2 gap-2 rounded-md bg-white/60 px-2 py-1.5">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] text-muted-foreground">장착중 {statLabel}</span>
+                          <span className="text-xs font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                            {displayStatA.toFixed(1)}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] text-muted-foreground">비교 {statLabel}</span>
+                          <span className="text-xs font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                            {displayStatB.toFixed(1)}
+                          </span>
+                        </div>
+                        <div className="col-span-2 flex justify-between border-t border-border pt-1 text-xs">
+                          <span className="text-muted-foreground">{statLabel} 차이</span>
+                          <span
+                            className={`font-semibold ${statDiff > 0 ? 'text-win' : statDiff < 0 ? 'text-lose' : 'text-muted-foreground'}`}
+                            style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                          >
+                            {statDiff >= 0 ? '+' : ''}{statDiff.toFixed(1)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">장착중인 아이템</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{vA.toFixed(1)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">비교 아이템</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{vB.toFixed(1)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs border-t border-border pt-1 mt-0.5">
+                        <span className="text-muted-foreground">차이</span>
+                        <span
+                          className={`font-semibold ${diff > 0 ? 'text-win' : diff < 0 ? 'text-lose' : 'text-muted-foreground'}`}
+                          style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                        >
+                          {diff >= 0 ? '+' : ''}{diff.toFixed(2)}%
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
