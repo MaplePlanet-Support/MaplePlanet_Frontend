@@ -7,6 +7,7 @@ export type PresetConfig = {
   baseStat: number
   subStat: number
   weaponType: WeaponType
+  compareWeaponType?: WeaponType
   weaponAtk: number
   atkPercent: number
   critRate: number
@@ -21,13 +22,14 @@ export type PresetConfig = {
   decentSharpEyes: boolean
   babyDragonFood: boolean
   useOverall: boolean
-  slots: Record<string, ItemStatFull>
+  slots: Record<string, Partial<ItemStatFull>>
   compareSlot: string
-  compareItem: ItemStatFull
+  compareItem: Partial<ItemStatFull>
 }
 
 export type PresetSaveRequest = {
   nickname: string
+  password?: string
   config: PresetConfig
 }
 
@@ -38,6 +40,7 @@ export type PresetSaveResponse = {
 
 export type PresetLoadRequest = {
   nickname: string
+  password?: string
 }
 
 export type PresetLoadResponse = {
@@ -45,8 +48,16 @@ export type PresetLoadResponse = {
   config: PresetConfig
 }
 
+export type PresetResetPasswordRequest = {
+  nickname: string
+  currentPassword?: string
+}
+
 export const savePreset = (body: PresetSaveRequest) =>
   api.post<PresetSaveResponse>('/v1/preset/save', body)
 
 export const loadPreset = (body: PresetLoadRequest) =>
   api.post<PresetLoadResponse>('/v1/preset/load', body)
+
+export const resetPresetPassword = (body: PresetResetPasswordRequest) =>
+  api.post<void>('/v1/preset/reset-password', body)
