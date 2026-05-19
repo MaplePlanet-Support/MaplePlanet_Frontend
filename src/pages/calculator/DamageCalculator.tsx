@@ -4,7 +4,8 @@ import {
   type WeaponType, type DamageCalcResponse,
 } from '@/api/calculator'
 
-const weaponOptions = [...WEAPON_OPTIONS, ...MAGE_WEAPON_OPTIONS]
+const ALL_WEAPON_OPTIONS = [...WEAPON_OPTIONS, ...MAGE_WEAPON_OPTIONS]
+
 const JOB_DEFAULT_WEAPON: Record<string, WeaponType> = {
   전사: 'TWO_HAND_SWORD',
   마법사: 'STAFF',
@@ -13,6 +14,16 @@ const JOB_DEFAULT_WEAPON: Record<string, WeaponType> = {
   '해적(바이퍼)': 'KNUCKLE',
   '해적(캡틴)': 'GUN',
 }
+
+const JOB_WEAPONS: Record<string, WeaponType[]> = {
+  전사: ['ONE_HAND_SWORD', 'ONE_HAND_AXE', 'ONE_HAND_BLUNT', 'TWO_HAND_SWORD', 'TWO_HAND_AXE', 'TWO_HAND_BLUNT', 'SPEAR', 'POLEARM'],
+  마법사: ['WAND', 'STAFF'],
+  궁수: ['BOW', 'CROSSBOW'],
+  도적: ['DAGGER', 'CLAW'],
+  '해적(바이퍼)': ['KNUCKLE'],
+  '해적(캡틴)': ['GUN'],
+}
+
 const JOB_OPTIONS = Object.keys(JOB_DEFAULT_WEAPON)
 
 function levelValue(value: number, max: number) {
@@ -158,7 +169,7 @@ export default function DamageCalculator() {
                   onChange={e => setWeaponType(e.target.value as WeaponType)}
                   className="h-8 w-32 rounded border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 >
-                  {weaponOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {ALL_WEAPON_OPTIONS.filter(o => JOB_WEAPONS[job]?.includes(o.value)).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
             </div>
@@ -259,12 +270,14 @@ export default function DamageCalculator() {
                   {isMagicWeapon ? result.totalMagic : result.totalAtk}
                 </div>
               </div>
-              <div className="border-t border-border pt-3">
-                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{isMagicWeapon ? '기본 데미지' : '스공'}</div>
-                <div className="mt-1 text-2xl font-semibold text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                  {result.damage.toFixed(1)}
+              {!isMagicWeapon && (
+                <div className="border-t border-border pt-3">
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">스공</div>
+                  <div className="mt-1 text-2xl font-semibold text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                    {result.damage.toFixed(1)}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="border-t border-border pt-3 grid grid-cols-2 gap-2 text-sm">
                 <div><span className="text-muted-foreground">버프 공</span><strong className="ml-2">+{result.buffAtk}</strong></div>
                 <div><span className="text-muted-foreground">버프 마</span><strong className="ml-2">+{result.buffMagic}</strong></div>
