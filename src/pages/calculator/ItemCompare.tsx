@@ -572,6 +572,7 @@ export default function ItemCompare() {
 
   async function handleSave() {
     if (!nickname.trim()) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
+    if (!password.trim()) { setPresetMsg({ type: 'err', text: '비밀번호를 설정해주세요.' }); return }
     try {
       const config: PresetConfig = {
         job, mode, baseStat, subStat, weaponType, compareWeaponType, weaponAtk, atkPercent: 0,
@@ -581,10 +582,11 @@ export default function ItemCompare() {
         critRate, critDmgPP, skillCoeff,
         useOverall, slots, compareSlot, compareItem,
       }
-      const res = await savePreset({ nickname: nickname.trim(), password: password || undefined, config })
+      const res = await savePreset({ nickname: nickname.trim(), password, config })
       setPresetMsg({ type: 'ok', text: `"${res.nickname}" 저장 완료!` })
-    } catch {
-      setPresetMsg({ type: 'err', text: '저장 실패. 잠시 후 다시 시도해주세요.' })
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : ''
+      setPresetMsg({ type: 'err', text: msg.includes('비밀번호') ? msg : '저장 실패. 잠시 후 다시 시도해주세요.' })
     }
   }
 
@@ -1346,7 +1348,7 @@ export default function ItemCompare() {
                 className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
               />
               <input
-                type="password" placeholder="비밀번호 (선택)" value={password}
+                type="password" placeholder="비밀번호" value={password}
                 onChange={e => setPassword(e.target.value)}
                 className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
               />
