@@ -97,6 +97,7 @@ export type DamageCompareRequest = {
   baseStat: number
   subStat: number
   weaponType: WeaponType
+  itemBWeaponType?: WeaponType
   weaponAtk: number
   atkPercent: number
   blessingLevel: number
