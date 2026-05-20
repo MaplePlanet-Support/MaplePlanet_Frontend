@@ -657,7 +657,9 @@ export default function ItemCompare() {
       const loadedMode: Mode = c.mode === 1 || c.mode === 2 ? c.mode : mode
       const loadedUseOverall = c.useOverall ?? false
       const loadedActiveSlots = ALL_SLOTS.filter(s => loadedUseOverall ? s !== '상의' && s !== '하의' : s !== '한벌옷')
-      const loadedCompareSlot = c.compareSlot && loadedActiveSlots.includes(c.compareSlot) ? c.compareSlot : loadedActiveSlots[0]
+      const loadedCompareSlot = c.compareSlot === ''
+        ? ''
+        : c.compareSlot && loadedActiveSlots.includes(c.compareSlot) ? c.compareSlot : loadedActiveSlots[0]
       const loadedWeaponType = c.weaponType ?? JOB_DEFAULT_WEAPON[loadedJob]
       const loadedCompareWeaponType = c.compareWeaponType ?? loadedWeaponType
       const loadedAmmoAtk = c.ammoAtk ?? 0
