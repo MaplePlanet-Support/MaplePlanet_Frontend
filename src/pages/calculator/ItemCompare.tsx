@@ -302,12 +302,15 @@ function levelValue(value: number, max: number) {
   return Math.max(0, Math.min(max, value))
 }
 
-function effectiveStat(base: number, flat: number, percent: number) {
-  return Math.floor((base + flat) * (1 + percent / 100))
+function effectiveStat(base: number, flat: number, percent: number, mwPct: number) {
+  const mwBonus = Math.floor(base * mwPct / 100)
+  return Math.floor((base + flat) * (1 + percent / 100)) + mwBonus
 }
 
-function requiredBaseStat(requirement: number, flat: number, percent: number) {
-  return Math.max(0, Math.ceil(requirement / (1 + percent / 100) - flat))
+function requiredBaseStat(requirement: number, flat: number, percent: number, mwPct: number) {
+  const numerator = requirement - flat * (1 + percent / 100)
+  const denominator = 1 + percent / 100 + mwPct / 100
+  return Math.max(0, Math.ceil(numerator / denominator))
 }
 
 function BuffLabel({ icon, children }: { icon: string; children: React.ReactNode }) {
@@ -506,12 +509,13 @@ export default function ItemCompare() {
       const aStatWithoutCurrent = aStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent)
       const fSubB = fSubA - slots[compareSlot].flatSubStat + compareItem.flatSubStat
       const aStatB = aStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent) + (compareItem.allStatPercent + (compareItem.subStatPercent ?? 0))
-      const currentSubStat = effectiveStat(subStat, fSubA, aStatA)
+      const mwPct = mapleWarriorLevel > 0 ? Math.floor((mapleWarriorLevel + 1) / 2) : 0
+      const currentSubStat = effectiveStat(subStat, fSubA, aStatA, mwPct)
       const topReq1 = Math.min(apTopReq1, currentSubStat)
       const topReq2 = Math.min(apTopReq2, currentSubStat)
       const remainingEquippedReq = apCompareIsTop1 ? topReq2 : topReq1
-      const needForCompareItem = requiredBaseStat(apCompareItemReq, fSubWithoutCurrent, aStatWithoutCurrent)
-      const needForEquippedItems = requiredBaseStat(remainingEquippedReq, fSubB, aStatB)
+      const needForCompareItem = requiredBaseStat(apCompareItemReq, fSubWithoutCurrent, aStatWithoutCurrent, mwPct)
+      const needForEquippedItems = requiredBaseStat(remainingEquippedReq, fSubB, aStatB, mwPct)
       const needB = Math.max(needForCompareItem, needForEquippedItems)
       const statShift = subStat - needB
       const redistributedBaseStat = baseStat + statShift
@@ -798,20 +802,21 @@ export default function ItemCompare() {
   const apAllStatWithoutCurrent = apAllStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent)
   const apFlatSubB = apFlatSubA - slots[compareSlot].flatSubStat + compareItem.flatSubStat
   const apAllStatB = apAllStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent) + (compareItem.allStatPercent + (compareItem.subStatPercent ?? 0))
-  const apCurrentSubStat = effectiveStat(subStat, apFlatSubA, apAllStatA)
+  const mwPct = mapleWarriorLevel > 0 ? Math.floor((mapleWarriorLevel + 1) / 2) : 0
+  const apCurrentSubStat = effectiveStat(subStat, apFlatSubA, apAllStatA, mwPct)
   const apEffectiveTopReq1 = Math.min(apTopReq1, apCurrentSubStat)
   const apEffectiveTopReq2 = Math.min(apTopReq2, apCurrentSubStat)
   const apRemainingEquippedReq = apCompareIsTop1 ? apEffectiveTopReq2 : apEffectiveTopReq1
   const apNeedA = apEffectiveTopReq1 > 0
     ? apCompareIsTop1
-      ? requiredBaseStat(apEffectiveTopReq1, apFlatSubWithoutCurrent, apAllStatWithoutCurrent)
-      : requiredBaseStat(apEffectiveTopReq1, apFlatSubA, apAllStatA)
+      ? requiredBaseStat(apEffectiveTopReq1, apFlatSubWithoutCurrent, apAllStatWithoutCurrent, mwPct)
+      : requiredBaseStat(apEffectiveTopReq1, apFlatSubA, apAllStatA, mwPct)
     : 0
   const apNeedForCompareItem = apEffectiveTopReq1 > 0
-    ? requiredBaseStat(apCompareItemReq, apFlatSubWithoutCurrent, apAllStatWithoutCurrent)
+    ? requiredBaseStat(apCompareItemReq, apFlatSubWithoutCurrent, apAllStatWithoutCurrent, mwPct)
     : 0
   const apNeedForEquippedItems = apEffectiveTopReq1 > 0
-    ? requiredBaseStat(apRemainingEquippedReq, apFlatSubB, apAllStatB)
+    ? requiredBaseStat(apRemainingEquippedReq, apFlatSubB, apAllStatB, mwPct)
     : 0
   const apNeedB = Math.max(apNeedForCompareItem, apNeedForEquippedItems)
   const apEffReq = Math.max(apRemainingEquippedReq, apCompareItemReq)
@@ -1575,7 +1580,7 @@ export default function ItemCompare() {
           const mwPct = mapleWarriorLevel > 0 ? Math.floor((mapleWarriorLevel + 1) / 2) : 0
           const flatMainEquip = activeSlots.reduce((s, k) => s + (slots[k].flatStat ?? 0) + (slots[k].flatAllStat ?? 0), 0)
           const mainPct = activeSlots.reduce((s, k) => s + (slots[k].statPercent ?? 0) + (slots[k].allStatPercent ?? 0), 0)
-          const minPureSub = apReverseReq > 0 ? requiredBaseStat(apReverseReq, apFlatSubA, apAllStatA) : 0
+          const minPureSub = apReverseReq > 0 ? requiredBaseStat(apReverseReq, apFlatSubA, apAllStatA, mwPct) : 0
           const moveable = apReverseReq > 0 ? Math.max(0, subStat - minPureSub) : 0
           const newPureMain = baseStat + moveable
           const newMwBonus = Math.floor(newPureMain * mwPct / 100)
