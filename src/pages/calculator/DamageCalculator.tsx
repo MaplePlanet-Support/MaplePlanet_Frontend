@@ -366,7 +366,7 @@ export default function DamageCalculator() {
               <label className="rounded-md border border-border p-3 flex items-center justify-between gap-2 text-xs text-muted-foreground cursor-pointer select-none">
                 <span className="flex items-center gap-2">
                   <input type="checkbox" checked={hontaleVictory} onChange={e => setHontaleVictory(e.target.checked)} />
-                  <BuffLabel icon="혼테일 원정대의 승리.png">혼테일 원정대의 승리</BuffLabel>
+                  <BuffLabel icon="혼테일 원정대의 승리.png">혼테일</BuffLabel>
                 </span>
                 <span className="text-[11px] text-muted-foreground">공 +30 / 마 +40</span>
               </label>

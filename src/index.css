@@ -118,7 +118,7 @@
 }
 
 #root {
-  width: min(1480px, 100%);
+  width: min(1620px, 100%);
   margin: 0 auto;
   text-align: center;
   position: relative;

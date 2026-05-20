@@ -255,19 +255,19 @@ function GuidePanel({
 }) {
   const g = GUIDE[mode]
   return (
-    <div className="bg-blue-50 border-b border-blue-100 px-6 py-2.5 flex flex-col gap-1.5">
+    <div className="bg-blue-50 border-b border-blue-100 px-6 py-3 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-xs font-semibold text-blue-700">이 페이지 사용법 — {g.summary}</div>
+        <div className="text-sm md:text-base font-semibold text-blue-700">이 페이지 사용법 — {g.summary}</div>
         <button
           type="button"
           onClick={onToggle}
-          className="shrink-0 rounded border border-blue-200 bg-white/70 px-2 py-1 text-[11px] font-medium text-blue-700 hover:bg-white"
+          className="shrink-0 rounded border border-blue-200 bg-white/70 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-white"
         >
           {open ? '설명 접기' : '설명 펼치기'}
         </button>
       </div>
       {open && g.details.map(({ label, desc }) => (
-        <div key={label} className="flex gap-2 text-xs">
+        <div key={label} className="flex gap-2 text-xs md:text-sm">
           <span className="font-semibold text-blue-700 whitespace-nowrap">{label}</span>
           <span className="text-blue-600">{desc}</span>
         </div>
@@ -293,7 +293,7 @@ function NumInput({
         onChange(max !== undefined ? Math.min(v, max) : v)
       }}
       style={{ width, fontFamily: "'JetBrains Mono', monospace" }}
-      className="h-7 rounded border border-border bg-background px-1.5 text-right text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+      className="h-7 rounded border border-border bg-background px-1.5 text-right text-sm focus:outline-none focus:ring-1 focus:ring-ring [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
     />
   )
 }
@@ -883,10 +883,10 @@ export default function ItemCompare() {
         onToggle={() => setIsGuideOpen(open => !open)}
       />
 
-      <div className="grid grid-cols-1 gap-4 p-3 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-4 lg:items-start">
+      <div className="grid grid-cols-1 gap-4 p-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:p-4 lg:items-start">
 
         {/* ── LEFT ── */}
-        <div className="bg-white rounded-xl border border-black/8 shadow-sm p-3 sm:p-6 flex flex-col gap-6">
+        <div className="bg-white rounded-xl border border-black/8 shadow-sm p-3 sm:p-4 flex flex-col gap-6">
 
           {/* 캐릭터 */}
           <section>
@@ -923,7 +923,7 @@ export default function ItemCompare() {
               </label>
             </div>
 
-            <div className="flex flex-col gap-4 xl:flex-row">
+            <div className="flex flex-col gap-3 2xl:flex-row">
               <div className="flex-1 min-w-0">
                 <div className="text-[11px] font-medium text-muted-foreground mb-1">직업 부위</div>
                 <div className="overflow-x-auto">
@@ -931,26 +931,26 @@ export default function ItemCompare() {
                     <thead>
                       <tr className="bg-muted/40">
                         <th className="border border-border px-2 py-1 text-left text-[11px] font-medium text-muted-foreground">슬롯</th>
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}</th>
-                        {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}</th>)}
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯</th>
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
-                        {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}%</th>)}
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯%</th>
-                        {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>)}
+                        <th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}</th>
+                        {mode === 2 && (<th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}</th>)}
+                        <th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯</th>
+                        <th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
+                        {mode === 2 && (<th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}%</th>)}
+                        <th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯%</th>
+                        {mode === 2 && (<th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>)}
                       </tr>
                     </thead>
                     <tbody>
                       {jobSlotRows.map(s => (
                         <tr key={s} className="hover:bg-muted/20">
                           <td className="border border-border px-2 py-0.5 text-xs text-muted-foreground whitespace-nowrap">{s}</td>
-                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={68} /></td>
-                          {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={68} /></td>)}
-                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].flatAllStat} onChange={v => updateSlot(s, 'flatAllStat', v)} max={1000} width={68} /></td>
-                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={68} /></td>
-                          {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].subStatPercent} onChange={v => updateSlot(s, 'subStatPercent', v)} max={1000} width={68} /></td>)}
-                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={68} /></td>
-                          {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center">{canUseFlatAtk(s, isMage) ? (<NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={68} />) : (<span className="text-xs text-muted-foreground">-</span>)}</td>)}
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={72} /></td>
+                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={72} /></td>)}
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatAllStat} onChange={v => updateSlot(s, 'flatAllStat', v)} max={1000} width={72} /></td>
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={72} /></td>
+                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].subStatPercent} onChange={v => updateSlot(s, 'subStatPercent', v)} max={1000} width={72} /></td>)}
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={72} /></td>
+                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center">{canUseFlatAtk(s, isMage) ? (<NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={72} />) : (<span className="text-xs text-muted-foreground">-</span>)}</td>)}
                         </tr>
                       ))}
                     </tbody>
@@ -965,26 +965,26 @@ export default function ItemCompare() {
                     <thead>
                       <tr className="bg-muted/40">
                         <th className="border border-border px-2 py-1 text-left text-[11px] font-medium text-muted-foreground">슬롯</th>
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}</th>
-                        {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}</th>)}
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯</th>
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
-                        {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}%</th>)}
-                        <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯%</th>
-                        {mode === 2 && isMage && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>)}
+                        <th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}</th>
+                        {mode === 2 && (<th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}</th>)}
+                        <th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯</th>
+                        <th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
+                        {mode === 2 && (<th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}%</th>)}
+                        <th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯%</th>
+                        {mode === 2 && isMage && (<th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>)}
                       </tr>
                     </thead>
                     <tbody>
                       {COMMON_SLOTS.map(s => (
                         <tr key={s} className="hover:bg-muted/20">
                           <td className="border border-border px-2 py-0.5 text-xs text-muted-foreground whitespace-nowrap">{s}</td>
-                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={68} /></td>
-                          {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={68} /></td>)}
-                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].flatAllStat} onChange={v => updateSlot(s, 'flatAllStat', v)} max={1000} width={68} /></td>
-                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={68} /></td>
-                          {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].subStatPercent} onChange={v => updateSlot(s, 'subStatPercent', v)} max={1000} width={68} /></td>)}
-                          <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={68} /></td>
-                          {mode === 2 && isMage && (<td className="border border-border px-1 py-0.5 text-center">{isFlatMagicSlot(s) ? (<NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={68} />) : (<span className="text-xs text-muted-foreground">-</span>)}</td>)}
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={72} /></td>
+                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={72} /></td>)}
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatAllStat} onChange={v => updateSlot(s, 'flatAllStat', v)} max={1000} width={72} /></td>
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={72} /></td>
+                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].subStatPercent} onChange={v => updateSlot(s, 'subStatPercent', v)} max={1000} width={72} /></td>)}
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={72} /></td>
+                          {mode === 2 && isMage && (<td className="border border-border px-0.5 py-0.5 text-center">{isFlatMagicSlot(s) ? (<NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={72} />) : (<span className="text-xs text-muted-foreground">-</span>)}</td>)}
                         </tr>
                       ))}
                     </tbody>
@@ -1456,42 +1456,42 @@ export default function ItemCompare() {
                     <Label className="text-xs"><BuffLabel icon="정령의축복.png">정령의 축복</BuffLabel></Label>
                     <button type="button" onClick={() => setBlessingLevel(20)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
                   </div>
-                  <NumInput value={blessingLevel} onChange={v => setBlessingLevel(levelValue(v, 20))} width={68} />
+                  <NumInput value={blessingLevel} onChange={v => setBlessingLevel(levelValue(v, 20))} width={72} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-xs"><BuffLabel icon="여신의축복.png">여신의 축복</BuffLabel></Label>
                     <button type="button" onClick={() => setEmPressBlessingLevel(12)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
                   </div>
-                  <NumInput value={empressBlessingLevel} onChange={v => setEmPressBlessingLevel(levelValue(v, 12))} width={68} />
+                  <NumInput value={empressBlessingLevel} onChange={v => setEmPressBlessingLevel(levelValue(v, 12))} width={72} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-xs"><BuffLabel icon="메이플용사.png">메용</BuffLabel></Label>
                     <button type="button" onClick={() => setMapleWarriorLevel(30)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
                   </div>
-                  <NumInput value={mapleWarriorLevel} onChange={v => setMapleWarriorLevel(levelValue(v, 30))} width={68} />
+                  <NumInput value={mapleWarriorLevel} onChange={v => setMapleWarriorLevel(levelValue(v, 30))} width={72} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-xs"><BuffLabel icon="메디테이션.png">메디테이션</BuffLabel></Label>
                     <button type="button" onClick={() => setMeditationLevel(20)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
                   </div>
-                  <NumInput value={meditationLevel} onChange={v => setMeditationLevel(levelValue(v, 20))} width={68} />
+                  <NumInput value={meditationLevel} onChange={v => setMeditationLevel(levelValue(v, 20))} width={72} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-xs"><BuffLabel icon="분노.png">분노</BuffLabel></Label>
                     <button type="button" onClick={() => setRageLevelSafe(20)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
                   </div>
-                  <NumInput value={rageLevel} onChange={setRageLevelSafe} width={68} />
+                  <NumInput value={rageLevel} onChange={setRageLevelSafe} width={72} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-xs"><BuffLabel icon="샤프아이즈.png">샤프아이즈</BuffLabel></Label>
                     <button type="button" onClick={() => setSharpEyesLevelSafe(30)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
                   </div>
-                  <NumInput value={sharpEyesLevel} onChange={setSharpEyesLevelSafe} width={68} />
+                  <NumInput value={sharpEyesLevel} onChange={setSharpEyesLevelSafe} width={72} />
                 </div>
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
                   <input type="checkbox" checked={decentSharpEyes} onChange={e => setDecentSharpEyesSafe(e.target.checked)} />
@@ -1503,7 +1503,7 @@ export default function ItemCompare() {
                 </label>
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
                   <input type="checkbox" checked={hontaleVictory} onChange={e => setHontaleVictory(e.target.checked)} />
-                  <BuffLabel icon="혼테일 원정대의 승리.png">혼테일 원정대의 승리</BuffLabel>
+                  <BuffLabel icon="혼테일 원정대의 승리.png">혼테일</BuffLabel>
                 </label>
               </div>
             </div>
