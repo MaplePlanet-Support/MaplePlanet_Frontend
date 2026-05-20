@@ -36,7 +36,15 @@ export default function PrivacyPolicy() {
       </section>
 
       <section className="mb-6">
-        <h2 className="text-base font-semibold mb-2">4. 정보의 보관 및 삭제</h2>
+        <h2 className="text-base font-semibold mb-2">4. 이용 통계</h2>
+        <p className="text-muted-foreground">
+          서비스 개선을 위해 브라우저에 임의로 생성한 익명 방문자 ID와 페이지 방문, 프리셋 저장/불러오기 이벤트를 수집할 수 있습니다.
+          이 정보는 개인을 직접 식별하기 위한 목적으로 사용하지 않습니다.
+        </p>
+      </section>
+
+      <section className="mb-6">
+        <h2 className="text-base font-semibold mb-2">5. 정보의 보관 및 삭제</h2>
         <p className="text-muted-foreground">
           저장된 프리셋 데이터는 서비스 운영 기간 동안 보관됩니다.
           데이터 삭제를 원하시는 경우 아래 이메일로 문의해 주세요.
@@ -44,7 +52,7 @@ export default function PrivacyPolicy() {
       </section>
 
       <section className="mb-6">
-        <h2 className="text-base font-semibold mb-2">5. 문의</h2>
+        <h2 className="text-base font-semibold mb-2">6. 문의</h2>
         <p className="text-muted-foreground">
           개인정보 관련 문의사항은 아래 이메일로 연락해 주세요.
           <br />

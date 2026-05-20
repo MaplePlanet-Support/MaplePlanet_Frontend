@@ -9,6 +9,7 @@ import {
   type WeaponType, type ItemStatFull, type ItemStat,
   type StatCompareResponse, type DamageCompareResponse, type StatConvResponse,
 } from '@/api/calculator'
+import { trackEvent } from '@/api/analytics'
 import { savePreset, loadPreset, resetPresetPassword, type PresetConfig } from '@/api/preset'
 import { Activity, Calculator } from 'lucide-react'
 
@@ -679,6 +680,7 @@ export default function ItemCompare() {
         useOverall, slots, compareSlot, compareItem,
       }
       const res = await savePreset({ nickname: nickname.trim(), password, config })
+      trackEvent('PRESET_SAVE')
       setPresetMsg({ type: 'ok', text: `"${res.nickname}" 저장 완료!` })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : ''
@@ -691,6 +693,7 @@ export default function ItemCompare() {
     if (!nickname.trim()) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
     try {
       const res = await loadPreset({ nickname: nickname.trim(), password: password || undefined })
+      trackEvent('PRESET_LOAD')
       const c = res.config as Partial<PresetConfig>
       const loadedJob = c.job && JOB_DEFAULT_WEAPON[c.job] ? c.job : job
       const loadedModeValue = Number(c.mode)
