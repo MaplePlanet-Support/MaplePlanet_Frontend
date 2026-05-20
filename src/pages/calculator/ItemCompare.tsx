@@ -1405,6 +1405,7 @@ export default function ItemCompare() {
 
           {mode === 2 && convResult !== null && (() => {
             const atkLabel = isMage ? '마력' : '공격력'
+            const rawMainStat1ToFinal = convResult.mainStatMultiplier
             const convOptions = [
               { label: `${statLabel}% 1%`, value: convResult.statPct1ToMainStat },
               { label: '올스탯% 1%', value: convResult.allStatPct1ToMainStat },
@@ -1423,6 +1424,12 @@ export default function ItemCompare() {
                   </span>
                 </div>
                 <div className="rounded-md border border-border bg-muted/20 px-3 py-2.5">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                    <span>장비 {statLabel} 기준</span>
+                    <span className="text-right">
+                      {statLabel}1 증가시 최종 {statLabel} {rawMainStat1ToFinal.toFixed(2)} 상승
+                    </span>
+                  </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                     {convOptions.map(opt => (
                       <div key={opt.label} className="flex items-center justify-between gap-3 text-xs">

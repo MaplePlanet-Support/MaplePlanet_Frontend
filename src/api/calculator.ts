@@ -176,6 +176,7 @@ export type StatConvResponse = {
   finalSubStat: number
   totalAttack: number
   atkPct1: number
+  mainStatMultiplier: number
 }
 
 export const statConv = (body: StatConvRequest) =>
