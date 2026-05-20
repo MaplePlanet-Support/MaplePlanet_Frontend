@@ -391,7 +391,7 @@ export default function DamageCalculator() {
               <div>
                 <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{isMagicWeapon ? '총 마력' : '총 공격력'}</div>
                 <div className="mt-1 text-3xl font-semibold text-maple" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                  {isMagicWeapon ? result.totalMagic : result.totalAtk}
+                  {isMagicWeapon ? Math.trunc(result.totalMagic) : result.totalAtk}
                 </div>
               </div>
               <div className="border-t border-border pt-3">
