@@ -119,12 +119,15 @@ const normalizeSlots = (slots?: Record<string, Partial<ItemStatFull>>): Record<s
   Object.fromEntries(ALL_SLOTS.map(s => [s, normalizeFull(slots?.[s])]))
 
 const isFlatAtkSlot = (slot: string) => slot === '무기' || slot === '장갑'
+const isFlatMagicSlot = (slot: string) => slot === '귀고리'
+const canUseFlatAtk = (slot: string, isMage: boolean) =>
+  slot === '무기' || (isMage ? isFlatMagicSlot(slot) : isFlatAtkSlot(slot))
 
-const sanitizeFull = (item: ItemStatFull, slot: string): ItemStatFull => {
+const sanitizeFull = (item: ItemStatFull, slot: string, isMage = false): ItemStatFull => {
   if (slot === '무기') return item
   return {
     ...item,
-    flatAtk: isFlatAtkSlot(slot) ? item.flatAtk : 0,
+    flatAtk: canUseFlatAtk(slot, isMage) ? item.flatAtk : 0,
     atkPercent: 0,
     critRateBonus: 0,
     totalDmgPercent: 0,
@@ -434,10 +437,10 @@ export default function ItemCompare() {
           blessingLevel, empressBlessingLevel, mapleWarriorLevel, meditationLevel, rageLevel,
           sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk: usesAmmo ? ammoAtk : 0,
           critRate, critDmgPP, skillCoeff,
-          equippedItems: activeSlotsList.map(s => sanitizeFull(slots[s], s)),
-          currentSlotItem: sanitizeFull(slots[compareSlot], compareSlot),
-          itemA: isWeapon ? { ...slots['무기'], flatAtk: weaponAtk } : sanitizeFull(slots[compareSlot] ?? emptyFull(), compareSlot),
-          itemB: sanitizeFull(compareItem, compareSlot),
+          equippedItems: activeSlotsList.map(s => sanitizeFull(slots[s], s, isMage)),
+          currentSlotItem: sanitizeFull(slots[compareSlot], compareSlot, isMage),
+          itemA: isWeapon ? { ...slots['무기'], flatAtk: weaponAtk } : sanitizeFull(slots[compareSlot] ?? emptyFull(), compareSlot, isMage),
+          itemB: sanitizeFull(compareItem, compareSlot, isMage),
         })
         setApResult(res)
       } catch { setApResult(null) }
@@ -448,7 +451,7 @@ export default function ItemCompare() {
     mode, baseStat, subStat, job, weaponType, compareWeaponType, weaponAtk,
     blessingLevel, empressBlessingLevel, mapleWarriorLevel, meditationLevel, rageLevel,
     sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo, critRate, critDmgPP, skillCoeff,
-    slots, compareSlot, compareItem, getActiveSlots,
+    slots, compareSlot, compareItem, getActiveSlots, isMage,
   ])
 
   function updateSlot(name: string, field: keyof ItemStatFull, value: number) {
@@ -501,16 +504,16 @@ export default function ItemCompare() {
         })
         setResult(res)
       } else {
-        const equippedDamage = activeSlots.map(s => sanitizeFull(slots[s], s))
-        const currentDamage = compareSlot ? sanitizeFull(slots[compareSlot], compareSlot) : null
+        const equippedDamage = activeSlots.map(s => sanitizeFull(slots[s], s, isMage))
+        const currentDamage = compareSlot ? sanitizeFull(slots[compareSlot], compareSlot, isMage) : null
         const isWeapon = compareSlot === '무기'
         // 무기 슬롯 비교: mode 2에서 무기 행이 테이블에 없으므로 slots['무기']는 항상 비어있음.
         // weaponAtk(현재 무기 공격력)를 itemA.flatAtk으로 넘기고, API의 weaponAtk=0으로 설정.
         const apiWeaponAtk = isWeapon ? 0 : weaponAtk
         const currentEquippedDamage = isWeapon
           ? { ...slots['무기'], flatAtk: weaponAtk }
-          : sanitizeFull(currentEquipped, compareSlot)
-        const compareItemDamage = sanitizeFull(compareItem, compareSlot)
+          : sanitizeFull(currentEquipped, compareSlot, isMage)
+        const compareItemDamage = sanitizeFull(compareItem, compareSlot, isMage)
         const res = await damageCompare({
           job, baseStat, subStat, weaponType, itemBWeaponType: isWeapon ? compareWeaponType : undefined, weaponAtk: apiWeaponAtk, atkPercent: 0,
           blessingLevel, empressBlessingLevel,
@@ -535,7 +538,7 @@ export default function ItemCompare() {
     mapleWarriorLevel, meditationLevel, rageLevel,
     sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo,
     critRate, critDmgPP, skillCoeff,
-    slots, compareSlot, compareItem, getActiveSlots,
+    slots, compareSlot, compareItem, getActiveSlots, isMage,
   ])
 
   useEffect(() => {
@@ -553,7 +556,7 @@ export default function ItemCompare() {
           meditationLevel, rageLevel, babyDragonFood,
           hontaleVictory,
           ammoAtk: usesAmmo ? ammoAtk : 0,
-          equippedItems: getActiveSlots().map(s => sanitizeFull(slots[s], s)),
+          equippedItems: getActiveSlots().map(s => sanitizeFull(slots[s], s, isMage)),
         })
         setConvResult(res)
       } catch {
@@ -565,7 +568,7 @@ export default function ItemCompare() {
     mode, baseStat, subStat, weaponType, weaponAtk,
     mapleWarriorLevel, blessingLevel, empressBlessingLevel,
     meditationLevel, rageLevel, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo,
-    slots, getActiveSlots,
+    slots, getActiveSlots, isMage,
   ])
 
   async function handleSave() {
@@ -654,7 +657,7 @@ export default function ItemCompare() {
   const jobSlotRows = getJobSlotRows()
   const activeSlots = getActiveSlots()
   const isWeaponCompare = mode === 2 && compareSlot === '무기'
-  const isFlatAtkCompare = mode === 2 && isFlatAtkSlot(compareSlot)
+  const isFlatAtkCompare = mode === 2 && canUseFlatAtk(compareSlot, isMage)
   const hasDamageCompareResult = result !== null && !isMode1Result(result)
 
   // AP 재분배 계산 (디스플레이용)
@@ -798,7 +801,7 @@ export default function ItemCompare() {
                         <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
                         {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}%</th>)}
                         <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯%</th>
-                        {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>)}
+                        {mode === 2 && !isMage && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>)}
                       </tr>
                     </thead>
                     <tbody>
@@ -811,7 +814,7 @@ export default function ItemCompare() {
                           <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={52} /></td>
                           {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].subStatPercent} onChange={v => updateSlot(s, 'subStatPercent', v)} max={1000} width={52} /></td>)}
                           <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={52} /></td>
-                          {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center">{isFlatAtkSlot(s) && !isMage ? (<NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={52} />) : (<span className="text-xs text-muted-foreground">-</span>)}</td>)}
+                          {mode === 2 && !isMage && (<td className="border border-border px-1 py-0.5 text-center">{isFlatAtkSlot(s) ? (<NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={52} />) : (<span className="text-xs text-muted-foreground">-</span>)}</td>)}
                         </tr>
                       ))}
                     </tbody>
@@ -832,6 +835,7 @@ export default function ItemCompare() {
                         <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
                         {mode === 2 && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}%</th>)}
                         <th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯%</th>
+                        {mode === 2 && isMage && (<th className="border border-border px-1 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>)}
                       </tr>
                     </thead>
                     <tbody>
@@ -844,6 +848,7 @@ export default function ItemCompare() {
                           <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={52} /></td>
                           {mode === 2 && (<td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].subStatPercent} onChange={v => updateSlot(s, 'subStatPercent', v)} max={1000} width={52} /></td>)}
                           <td className="border border-border px-1 py-0.5 text-center"><NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={52} /></td>
+                          {mode === 2 && isMage && (<td className="border border-border px-1 py-0.5 text-center">{isFlatMagicSlot(s) ? (<NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={52} />) : (<span className="text-xs text-muted-foreground">-</span>)}</td>)}
                         </tr>
                       ))}
                     </tbody>
