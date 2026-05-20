@@ -1578,10 +1578,10 @@ export default function ItemCompare() {
           const minPureSub = apReverseReq > 0 ? requiredBaseStat(apReverseReq, apFlatSubA, apAllStatA) : 0
           const moveable = apReverseReq > 0 ? Math.max(0, subStat - minPureSub) : 0
           const newPureMain = baseStat + moveable
-          const newBuffedMain = newPureMain + Math.floor(newPureMain * mwPct / 100)
-          const newFinalMain = Math.floor((newBuffedMain + flatMainEquip) * (1 + mainPct / 100))
-          const curBuffedMain = baseStat + Math.floor(baseStat * mwPct / 100)
-          const curFinalMain = Math.floor((curBuffedMain + flatMainEquip) * (1 + mainPct / 100))
+          const newMwBonus = Math.floor(newPureMain * mwPct / 100)
+          const newFinalMain = Math.floor((newPureMain + flatMainEquip) * (1 + mainPct / 100)) + newMwBonus
+          const curMwBonus = Math.floor(baseStat * mwPct / 100)
+          const curFinalMain = Math.floor((baseStat + flatMainEquip) * (1 + mainPct / 100)) + curMwBonus
           return (
             <div className="flex flex-col gap-3 border-b border-border pb-4">
               <div className="flex items-center gap-2">
