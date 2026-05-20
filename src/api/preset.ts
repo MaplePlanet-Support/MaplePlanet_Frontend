@@ -23,10 +23,12 @@ export type PresetConfig = {
   babyDragonFood: boolean
   hontaleVictory?: boolean
   ammoAtk?: number
+  ammoName?: string
   useOverall: boolean
   slots: Record<string, Partial<ItemStatFull>>
   compareSlot: string
   compareItem: Partial<ItemStatFull>
+  itemB?: Partial<ItemStatFull>
 }
 
 export type PresetSaveRequest = {

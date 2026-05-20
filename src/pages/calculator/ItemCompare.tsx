@@ -580,6 +580,7 @@ export default function ItemCompare() {
         blessingLevel, empressBlessingLevel,
         mapleWarriorLevel, meditationLevel, rageLevel,
         sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk,
+        ammoName: selectedAmmo?.name,
         critRate, critDmgPP, skillCoeff,
         useOverall, slots, compareSlot, compareItem,
       }
@@ -609,12 +610,14 @@ export default function ItemCompare() {
       setDecentSharpEyes(loadedSharpLevel > 0 ? false : c.decentSharpEyes ?? false)
       setBabyDragonFood(loadedRageLevel > 0 ? false : c.babyDragonFood ?? false)
       setHontaleVictory(c.hontaleVictory ?? false)
-      setSelectedAmmo((AMMO[c.weaponType] ?? []).find(item => item.atk === (c.ammoAtk ?? 0)) ?? null)
+      setSelectedAmmo((AMMO[c.weaponType] ?? []).find(item => item.name === c.ammoName)
+        ?? (AMMO[c.weaponType] ?? []).find(item => item.atk === (c.ammoAtk ?? 0))
+        ?? null)
       if (c.critRate !== undefined) setCritRate(c.critRate)
       if (c.critDmgPP !== undefined) setCritDmgPP(c.critDmgPP)
       if (c.skillCoeff !== undefined) setSkillCoeff(c.skillCoeff)
       setUseOverall(c.useOverall); setSlots(normalizeSlots(c.slots)); setCompareSlot(c.compareSlot)
-      setCompareItem(normalizeFull(c.compareItem))
+      setCompareItem(normalizeFull(c.compareItem ?? c.itemB))
       setPresetMsg({ type: 'ok', text: `"${res.nickname}" 불러오기 완료!` })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : ''
