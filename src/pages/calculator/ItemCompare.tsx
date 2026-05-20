@@ -96,12 +96,35 @@ const JOB_WEAPONS: Record<string, WeaponType[]> = {
   '해적(캡틴)': ['GUN'],
 }
 
+const isWeaponType = (value: unknown): value is WeaponType =>
+  typeof value === 'string' && ALL_WEAPON_OPTIONS.some(o => o.value === value)
+
+const normalizeWeaponType = (value: unknown, job: string): WeaponType => {
+  const fallback = JOB_DEFAULT_WEAPON[job]
+  const byValue = isWeaponType(value) ? value : undefined
+  const byLabel = typeof value === 'string'
+    ? ALL_WEAPON_OPTIONS.find(o => o.label === value)?.value
+    : undefined
+  const normalized = byValue ?? byLabel ?? fallback
+  return JOB_WEAPONS[job]?.includes(normalized) ? normalized : fallback
+}
+
 const weaponLabel = (value: WeaponType) =>
   ALL_WEAPON_OPTIONS.find(o => o.value === value)?.label ?? value
 
 const JOB_SLOTS = ['모자', '한벌옷', '상의', '하의', '장갑', '신발', '무기', '방패']
 const COMMON_SLOTS = ['귀고리', '망토', '목걸이', '안경', '반지', '벨트', '훈장']
 const ALL_SLOTS = [...JOB_SLOTS, ...COMMON_SLOTS]
+
+const numberOrZero = (value: unknown) => {
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? n : 0
+}
+
+const numberOrFallback = (value: unknown, fallback: number) => {
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
 
 const emptyFull = (): ItemStatFull => ({
   flatStat: 0, flatSubStat: 0, statPercent: 0, allStatPercent: 0,
@@ -110,10 +133,22 @@ const emptyFull = (): ItemStatFull => ({
   critRateBonus: 0, totalDmgPercent: 0, bossDmgPercent: 0,
 })
 
-const normalizeFull = (item?: Partial<ItemStatFull>): ItemStatFull => ({
-  ...emptyFull(),
-  ...item,
-})
+const normalizeFull = (item?: Partial<ItemStatFull> | null): ItemStatFull => {
+  const source = item ?? {}
+  return {
+    flatStat: numberOrZero(source.flatStat),
+    flatSubStat: numberOrZero(source.flatSubStat),
+    statPercent: numberOrZero(source.statPercent),
+    allStatPercent: numberOrZero(source.allStatPercent),
+    flatAllStat: numberOrZero(source.flatAllStat),
+    subStatPercent: numberOrZero(source.subStatPercent),
+    flatAtk: numberOrZero(source.flatAtk),
+    atkPercent: numberOrZero(source.atkPercent),
+    critRateBonus: numberOrZero(source.critRateBonus),
+    totalDmgPercent: numberOrZero(source.totalDmgPercent),
+    bossDmgPercent: numberOrZero(source.bossDmgPercent),
+  }
+}
 
 const normalizeSlots = (slots?: Record<string, Partial<ItemStatFull>>): Record<string, ItemStatFull> =>
   Object.fromEntries(ALL_SLOTS.map(s => [s, normalizeFull(slots?.[s])]))
@@ -654,26 +689,29 @@ export default function ItemCompare() {
       const res = await loadPreset({ nickname: nickname.trim(), password: password || undefined })
       const c = res.config as Partial<PresetConfig>
       const loadedJob = c.job && JOB_DEFAULT_WEAPON[c.job] ? c.job : job
-      const loadedMode: Mode = c.mode === 1 || c.mode === 2 ? c.mode : mode
+      const loadedModeValue = Number(c.mode)
+      const loadedMode: Mode = loadedModeValue === 1 || loadedModeValue === 2 ? loadedModeValue : mode
       const loadedUseOverall = c.useOverall ?? false
       const loadedActiveSlots = ALL_SLOTS.filter(s => loadedUseOverall ? s !== '상의' && s !== '하의' : s !== '한벌옷')
       const loadedCompareSlot = c.compareSlot === ''
         ? ''
         : c.compareSlot && loadedActiveSlots.includes(c.compareSlot) ? c.compareSlot : loadedActiveSlots[0]
-      const loadedWeaponType = c.weaponType ?? JOB_DEFAULT_WEAPON[loadedJob]
-      const loadedCompareWeaponType = c.compareWeaponType ?? loadedWeaponType
-      const loadedAmmoAtk = c.ammoAtk ?? 0
+      const loadedWeaponType = normalizeWeaponType(c.weaponType, loadedJob)
+      const loadedCompareWeaponType = c.compareWeaponType
+        ? normalizeWeaponType(c.compareWeaponType, loadedJob)
+        : loadedWeaponType
+      const loadedAmmoAtk = numberOrZero(c.ammoAtk)
 
       setResult(null)
       setApResult(null)
       setConvResult(null)
-      setJob(loadedJob); setMode(loadedMode); setBaseStat(c.baseStat ?? 0); setSubStat(c.subStat ?? 0)
-      setWeaponType(loadedWeaponType); setCompareWeaponType(loadedCompareWeaponType); setWeaponAtk(c.weaponAtk ?? 0)
-      setBlessingLevel(c.blessingLevel ?? 0); setEmPressBlessingLevel(c.empressBlessingLevel ?? 0)
-      setMapleWarriorLevel(c.mapleWarriorLevel ?? 0)
-      setMeditationLevel(c.meditationLevel ?? 0)
-      const loadedRageLevel = c.rageLevel ?? 0
-      const loadedSharpLevel = c.sharpEyesLevel ?? 0
+      setJob(loadedJob); setMode(loadedMode); setBaseStat(numberOrZero(c.baseStat)); setSubStat(numberOrZero(c.subStat))
+      setWeaponType(loadedWeaponType); setCompareWeaponType(loadedCompareWeaponType); setWeaponAtk(numberOrZero(c.weaponAtk))
+      setBlessingLevel(numberOrZero(c.blessingLevel)); setEmPressBlessingLevel(numberOrZero(c.empressBlessingLevel))
+      setMapleWarriorLevel(numberOrZero(c.mapleWarriorLevel))
+      setMeditationLevel(numberOrZero(c.meditationLevel))
+      const loadedRageLevel = numberOrZero(c.rageLevel)
+      const loadedSharpLevel = numberOrZero(c.sharpEyesLevel)
       setRageLevel(loadedRageLevel)
       setSharpEyesLevel(loadedSharpLevel)
       setDecentSharpEyes(loadedSharpLevel > 0 ? false : c.decentSharpEyes ?? false)
@@ -682,11 +720,11 @@ export default function ItemCompare() {
       setSelectedAmmo((AMMO[loadedWeaponType] ?? []).find(item => item.name === c.ammoName)
         ?? (AMMO[loadedWeaponType] ?? []).find(item => item.atk === loadedAmmoAtk)
         ?? null)
-      setCritRate(c.critRate ?? JOB_CRIT[loadedJob].critRate)
-      setCritDmgPP(c.critDmgPP ?? JOB_CRIT[loadedJob].critDmgPP)
-      setSkillCoeff(c.skillCoeff ?? JOB_SKILL_COEFF[loadedJob] ?? 150)
+      setCritRate(numberOrFallback(c.critRate, JOB_CRIT[loadedJob].critRate))
+      setCritDmgPP(numberOrFallback(c.critDmgPP, JOB_CRIT[loadedJob].critDmgPP))
+      setSkillCoeff(numberOrFallback(c.skillCoeff, JOB_SKILL_COEFF[loadedJob] ?? 150))
       setUseOverall(loadedUseOverall); setSlots(normalizeSlots(c.slots)); setCompareSlot(loadedCompareSlot)
-      setCompareItem(normalizeFull(c.compareItem ?? c.itemB))
+      setCompareItem(normalizeFull(c.compareItem ?? c.itemB ?? c.itemA))
       setPresetMsg({ type: 'ok', text: `"${res.nickname}" 불러오기 완료!` })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : ''

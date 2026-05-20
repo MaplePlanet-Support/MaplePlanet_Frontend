@@ -28,6 +28,7 @@ export type PresetConfig = {
   slots: Record<string, Partial<ItemStatFull>>
   compareSlot: string
   compareItem: Partial<ItemStatFull>
+  itemA?: Partial<ItemStatFull>
   itemB?: Partial<ItemStatFull>
 }
 

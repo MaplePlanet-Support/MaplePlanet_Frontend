@@ -397,7 +397,7 @@ export default function DamageCalculator() {
               <div className="border-t border-border pt-3">
                 <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{isMagicWeapon ? '마력' : '스공'}</div>
                 <div className="mt-1 text-2xl font-semibold text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                  {result.damage.toFixed(1)}
+                  {isMagicWeapon ? Math.trunc(result.damage) : result.damage.toFixed(1)}
                 </div>
               </div>
               <div className="border-t border-border pt-3 grid grid-cols-2 gap-2 text-sm">
