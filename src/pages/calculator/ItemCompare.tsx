@@ -641,8 +641,8 @@ export default function ItemCompare() {
   }, [calculate])
 
   useEffect(() => {
-    if (mode !== 2 || baseStat <= 0) { setConvResult(null); return }
     const timer = setTimeout(async () => {
+      if (mode !== 2 || baseStat <= 0) { setConvResult(null); return }
       try {
         const res = await statConv({
           baseStat, subStat, weaponType, weaponAtk,
