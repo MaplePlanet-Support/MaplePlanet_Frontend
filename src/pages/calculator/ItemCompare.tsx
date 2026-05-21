@@ -306,6 +306,10 @@ function levelValue(value: number, max: number) {
   return Math.max(0, Math.min(max, value))
 }
 
+function amplificationCoeff(level: number) {
+  return level > 0 ? 110 + level : 100
+}
+
 function effectiveStat(base: number, flat: number, percent: number, mwPct: number) {
   const mwBonus = Math.floor(base * mwPct / 100)
   return Math.floor((base + flat) * (1 + percent / 100)) + mwBonus
@@ -522,6 +526,8 @@ export default function ItemCompare() {
   const [critRate, setCritRate] = useState(0)
   const [critDmgPP, setCritDmgPP] = useState(0)
   const [skillCoeff, setSkillCoeff] = useState(150)
+  const [amplificationLevel, setAmplificationLevel] = useState(0)
+  const [amplificationCompareLevel, setAmplificationCompareLevel] = useState(0)
   const [useOverall, setUseOverall] = useState(false)
   const [slots, setSlots] = useState<Record<string, ItemStatFull>>(
     normalizeSlots()
@@ -548,6 +554,7 @@ export default function ItemCompare() {
   const [apResult, setApResult] = useState<DamageCompareResponse | null>(null)
 
   const isMage = job === '마법사'
+  const effectiveSkillCoeff = isMage ? amplificationCoeff(amplificationLevel) : skillCoeff
   const atkColLabel = isMage ? '마력' : '공격력'
   const statLabel = JOB_STAT[job]
   const subLabel = JOB_SUB[job]
@@ -580,6 +587,7 @@ export default function ItemCompare() {
     setCritRate(d.critRate)
     setCritDmgPP(d.critDmgPP)
     setSkillCoeff(JOB_SKILL_COEFF[nextJob] ?? 150)
+    setAmplificationLevel(0)
     setWeaponType(JOB_DEFAULT_WEAPON[nextJob])
     setCompareWeaponType(JOB_DEFAULT_WEAPON[nextJob])
     setSelectedAmmo(null)
@@ -621,7 +629,7 @@ export default function ItemCompare() {
           weaponType, itemBWeaponType: isWeapon ? compareWeaponType : undefined, weaponAtk: apiWeaponAtk, atkPercent: 0,
           blessingLevel, empressBlessingLevel, mapleWarriorLevel, meditationLevel, rageLevel,
           sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk: usesAmmo ? ammoAtk : 0,
-          critRate, critDmgPP, skillCoeff,
+          critRate, critDmgPP, skillCoeff: effectiveSkillCoeff,
           equippedItems: activeSlotsList.map(s => sanitizeFull(slots[s], s, isMage)),
           currentSlotItem: sanitizeFull(slots[compareSlot], compareSlot, isMage),
           itemA: isWeapon ? { ...slots['무기'], flatAtk: weaponAtk } : sanitizeFull(slots[compareSlot] ?? emptyFull(), compareSlot, isMage),
@@ -635,7 +643,7 @@ export default function ItemCompare() {
     apTopReq1, apTopReq2, apCompareItemReq, apCompareIsTop1,
     mode, baseStat, subStat, job, weaponType, compareWeaponType, weaponAtk,
     blessingLevel, empressBlessingLevel, mapleWarriorLevel, meditationLevel, rageLevel,
-    sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo, critRate, critDmgPP, skillCoeff,
+    sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo, critRate, critDmgPP, effectiveSkillCoeff,
     slots, compareSlot, compareItem, getActiveSlots, isMage,
   ])
 
@@ -705,7 +713,7 @@ export default function ItemCompare() {
           blessingLevel, empressBlessingLevel,
           mapleWarriorLevel, meditationLevel, rageLevel,
           sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk: usesAmmo ? ammoAtk : 0,
-          critRate, critDmgPP, skillCoeff,
+          critRate, critDmgPP, skillCoeff: effectiveSkillCoeff,
           equippedItems: equippedDamage,
           currentSlotItem: currentDamage,
           itemA: currentEquippedDamage,
@@ -723,7 +731,7 @@ export default function ItemCompare() {
     blessingLevel, empressBlessingLevel,
     mapleWarriorLevel, meditationLevel, rageLevel,
     sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo,
-    critRate, critDmgPP, skillCoeff,
+    critRate, critDmgPP, effectiveSkillCoeff,
     slots, compareSlot, compareItem, getActiveSlots, isMage,
   ])
 
@@ -785,7 +793,7 @@ export default function ItemCompare() {
           job, weaponType, weaponAtk, atkPercent: 0,
           blessingLevel, empressBlessingLevel, mapleWarriorLevel, meditationLevel, rageLevel,
           sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk: usesAmmo ? ammoAtk : 0,
-          critRate, critDmgPP, skillCoeff,
+          critRate, critDmgPP, skillCoeff: effectiveSkillCoeff,
           equippedItems,
           currentSlotItem: null,
           itemA: emptyFull(),
@@ -846,7 +854,7 @@ export default function ItemCompare() {
     mode, job, baseStat, subStat, weaponType, weaponAtk,
     mapleWarriorLevel, blessingLevel, empressBlessingLevel,
     meditationLevel, rageLevel, sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo,
-    critRate, critDmgPP, skillCoeff,
+    critRate, critDmgPP, effectiveSkillCoeff,
     slots, getActiveSlots, isMage,
   ])
 
@@ -865,7 +873,7 @@ export default function ItemCompare() {
         mapleWarriorLevel, meditationLevel, rageLevel,
         sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk,
         ammoName: selectedAmmo?.name,
-        critRate, critDmgPP, skillCoeff,
+        critRate, critDmgPP, skillCoeff: effectiveSkillCoeff, amplificationLevel,
         useOverall, slots, compareSlot, compareItem,
       }
       const res = await savePreset({ nickname: name, password: presetPassword, config })
@@ -924,6 +932,9 @@ export default function ItemCompare() {
       setCritRate(numberOrFallback(c.critRate, JOB_CRIT[loadedJob].critRate))
       setCritDmgPP(numberOrFallback(c.critDmgPP, JOB_CRIT[loadedJob].critDmgPP))
       setSkillCoeff(numberOrFallback(c.skillCoeff, JOB_SKILL_COEFF[loadedJob] ?? 150))
+      setAmplificationLevel(loadedJob === '마법사'
+        ? levelValue(numberOrZero(c.amplificationLevel) || Math.max(0, numberOrZero(c.skillCoeff) - 110), 30)
+        : 0)
       setUseOverall(loadedUseOverall); setSlots(normalizeSlots(c.slots)); setCompareSlot(loadedCompareSlot)
       setCompareItem(normalizeFull(c.compareItem ?? c.itemB ?? c.itemA))
       setPresetMsg({ type: 'ok', text: `"${res.nickname}" 프리셋을 불러왔습니다.` })
@@ -1586,6 +1597,25 @@ export default function ItemCompare() {
                           valA={expA} valB={expB}
                         />
                       )}
+                      {/* 아이템 + 앰플 합산 실질 데미지 (마법사, 두 레벨이 다를 때) */}
+                      {isMage && amplificationLevel !== amplificationCompareLevel && (() => {
+                        const ratio = amplificationCoeff(amplificationCompareLevel) / amplificationCoeff(amplificationLevel)
+                        // valA = 현재 아이템 + 현재 앰플, valB = 비교 아이템 + 비교 앰플
+                        return (
+                          <>
+                            <ExpectedDmgBlock
+                              title={`실질 데미지 + 앰플 Lv.${amplificationLevel}→${amplificationCompareLevel} — 일반 몬스터`}
+                              valA={expNormalA} valB={expNormalB * ratio}
+                            />
+                            {hasBossDmg && (
+                              <ExpectedDmgBlock
+                                title={`실질 데미지 + 앰플 Lv.${amplificationLevel}→${amplificationCompareLevel} — 보스 몬스터`}
+                                valA={expA} valB={expB * ratio}
+                              />
+                            )}
+                          </>
+                        )
+                      })()}
                       {/* INT / 총마력 수치 비교 (마법사) */}
                       {isMage && statA !== null && statB !== null && magicA !== null && magicB !== null && (
                         <div className="rounded-md bg-muted/30 px-3 py-2 flex flex-col gap-1 text-xs">
@@ -1682,7 +1712,7 @@ export default function ItemCompare() {
                   onClick={() => {
                     setBlessingLevel(0); setEmPressBlessingLevel(0); setMapleWarriorLevel(0)
                     setMeditationLevel(0); setRageLevel(0); setSharpEyesLevel(0)
-                    setDecentSharpEyes(false); setBabyDragonFood(false); setHontaleVictory(false)
+                    setAmplificationLevel(0); setAmplificationCompareLevel(0); setDecentSharpEyes(false); setBabyDragonFood(false); setHontaleVictory(false)
                   }}
                   className="text-[10px] font-medium text-muted-foreground hover:text-foreground hover:underline"
                 >
@@ -1711,6 +1741,19 @@ export default function ItemCompare() {
                   </div>
                   <NumInput value={mapleWarriorLevel} onChange={v => setMapleWarriorLevel(levelValue(v, 30))} width={72} />
                 </div>
+                {isMage && (
+                  <div className="flex flex-col gap-1 col-span-full sm:col-span-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-xs"><BuffLabel icon="앰플리케이션.png">앰플</BuffLabel></Label>
+                      <button type="button" onClick={() => { setAmplificationLevel(30); setAmplificationCompareLevel(30) }} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <NumInput value={amplificationLevel} onChange={v => setAmplificationLevel(levelValue(v, 30))} width={56} />
+                      <span className="text-[10px] text-muted-foreground">→</span>
+                      <NumInput value={amplificationCompareLevel} onChange={v => setAmplificationCompareLevel(levelValue(v, 30))} width={56} />
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-xs"><BuffLabel icon="메디테이션.png">메디테이션</BuffLabel></Label>

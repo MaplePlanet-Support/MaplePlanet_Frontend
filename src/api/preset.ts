@@ -13,6 +13,7 @@ export type PresetConfig = {
   critRate: number
   critDmgPP: number
   skillCoeff: number
+  amplificationLevel?: number
   blessingLevel: number
   empressBlessingLevel: number
   mapleWarriorLevel: number
