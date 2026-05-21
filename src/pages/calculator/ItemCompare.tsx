@@ -411,6 +411,48 @@ function ExpectedDmgBlock({
   )
 }
 
+function SeoContent() {
+  return (
+    <section className="px-4 pb-10">
+      <div className="mx-auto flex max-w-5xl flex-col gap-5 rounded-xl border border-black/8 bg-white px-5 py-6 shadow-sm sm:px-7">
+        <div>
+          <h2 className="mb-2 text-xl font-bold text-foreground">메이플 플래닛 아이템 비교와 환산 계산</h2>
+          <p className="text-sm leading-7 text-muted-foreground">
+            PlanetCompare는 메이플 플래닛 아이템을 교체하기 전에 실제 효율을 확인하기 위한 계산기입니다.
+            현재 장비와 비교 아이템의 스탯을 입력하면 주스탯 변화, 스공 변화, 실제 데미지 기대값, 보스 기준 데미지를 함께 비교할 수 있습니다.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <article className="rounded-lg border border-border bg-muted/20 p-4">
+            <h3 className="mb-2 text-sm font-semibold text-foreground">메이플 플래닛 환산</h3>
+            <p className="text-xs leading-6 text-muted-foreground">
+              공격력 1, 보공 1%, 총뎀 1%, 올스탯 옵션이 현재 캐릭터 기준으로 주스탯 몇에 가까운지 확인합니다.
+            </p>
+          </article>
+          <article className="rounded-lg border border-border bg-muted/20 p-4">
+            <h3 className="mb-2 text-sm font-semibold text-foreground">아이템 교체 효율</h3>
+            <p className="text-xs leading-6 text-muted-foreground">
+              모자, 한벌옷, 상의, 하의, 장갑, 신발, 무기, 방패, 장신구 슬롯별로 장착 중인 아이템과 비교 아이템을 계산합니다.
+            </p>
+          </article>
+          <article className="rounded-lg border border-border bg-muted/20 p-4">
+            <h3 className="mb-2 text-sm font-semibold text-foreground">버프와 무기 반영</h3>
+            <p className="text-xs leading-6 text-muted-foreground">
+              메이플 용사, 샤프 아이즈, 분노, 메디테이션, 표창, 불릿, 화살 공격력을 반영해 결과 편차를 줄입니다.
+            </p>
+          </article>
+        </div>
+
+        <p className="text-xs leading-6 text-muted-foreground">
+          이 페이지는 메이플 플래닛 유저가 장비 선택을 돕기 위해 만든 비공식 도구입니다.
+          계산 결과는 입력값과 적용한 가정에 따라 달라질 수 있으므로 실제 게임 내 수치와 함께 확인해 주세요.
+        </p>
+      </div>
+    </section>
+  )
+}
+
 export default function ItemCompare() {
   const [mode, setMode] = useState<Mode>(2)
   const [isGuideOpen, setIsGuideOpen] = useState(true)
@@ -843,6 +885,16 @@ export default function ItemCompare() {
       ? `순수 ${statLabel} -${apShiftAbs} / 순수 ${subLabel} +${apShiftAbs}`
       : `순수 ${statLabel}, ${subLabel} 변화 없음`
 
+  useEffect(() => {
+    document.title = '메이플 플래닛 아이템 비교 · 환산 계산기 | PlanetCompare'
+    document
+      .querySelector('meta[name="description"]')
+      ?.setAttribute(
+        'content',
+        '메이플 플래닛 아이템 비교와 환산 계산을 빠르게 확인하세요. 장비 스탯, 공격력, 보공, 총뎀, 크확, 버프를 반영해 교체 효율을 비교합니다.',
+      )
+  }, [])
+
   return (
     <div
       className="text-left min-h-screen"
@@ -852,7 +904,7 @@ export default function ItemCompare() {
       <div className="bg-white border-b border-black/8 px-6 py-3 flex items-center gap-6">
         <div>
           <div className="text-[11px] text-muted-foreground tracking-widest uppercase">PlanetCompare</div>
-          <div className="text-lg font-semibold text-foreground leading-tight">아이템 비교</div>
+          <h1 className="m-0 text-lg font-semibold text-foreground leading-tight">메이플 플래닛 아이템 비교</h1>
         </div>
         <div className="flex gap-2">
           {([
@@ -1930,6 +1982,7 @@ export default function ItemCompare() {
         )}
       </div>
       </div>
+      <SeoContent />
     </div>
   )
 }

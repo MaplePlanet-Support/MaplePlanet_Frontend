@@ -1,4 +1,16 @@
+import { useEffect } from 'react'
+
 export default function PrivacyPolicy() {
+  useEffect(() => {
+    document.title = '개인정보처리방침 | PlanetCompare'
+    document
+      .querySelector('meta[name="description"]')
+      ?.setAttribute(
+        'content',
+        'PlanetCompare의 개인정보 수집, 프리셋 저장, 이용 통계, Google AdSense 광고 쿠키 사용 안내입니다.',
+      )
+  }, [])
+
   return (
     <div className="max-w-2xl mx-auto px-6 py-10 text-sm text-foreground leading-relaxed">
       <h1 className="text-2xl font-bold mb-6">개인정보처리방침</h1>
@@ -21,9 +33,11 @@ export default function PrivacyPolicy() {
           서비스는 Google AdSense를 통해 광고를 게재합니다. Google은 쿠키를 사용하여 사용자의 관심사에 맞는 광고를 표시할 수 있습니다.
         </p>
         <ul className="list-disc list-inside text-muted-foreground space-y-1">
+          <li>Google을 포함한 제3자 광고 사업자는 사용자의 이전 방문 기록을 기반으로 광고를 게재하기 위해 쿠키를 사용할 수 있습니다.</li>
+          <li>Google의 광고 쿠키 사용은 사용자가 이 사이트 또는 다른 사이트를 방문한 기록을 기반으로 맞춤 광고를 게재할 수 있게 합니다.</li>
           <li>Google의 광고 쿠키 사용은 <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-foreground underline">Google 개인정보처리방침</a>을 따릅니다.</li>
           <li><a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" className="text-foreground underline">Google 광고 설정</a>에서 맞춤 광고를 비활성화할 수 있습니다.</li>
-          <li>또는 <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-foreground underline">aboutads.info</a>에서 제3자 쿠키를 거부할 수 있습니다.</li>
+          <li>또는 <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" className="text-foreground underline">aboutads.info</a>에서 일부 제3자 광고 쿠키 사용을 거부할 수 있습니다.</li>
         </ul>
       </section>
 
@@ -60,7 +74,7 @@ export default function PrivacyPolicy() {
         </p>
       </section>
 
-      <p className="text-xs text-muted-foreground mt-8">최종 수정일: 2026년 5월 20일</p>
+      <p className="text-xs text-muted-foreground mt-8">최종 수정일: 2026년 5월 22일</p>
     </div>
   )
 }
