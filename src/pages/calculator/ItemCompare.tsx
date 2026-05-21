@@ -212,6 +212,8 @@ const isFlatAtkSlot = (slot: string) => slot === '무기' || slot === '장갑'
 const isFlatMagicSlot = (slot: string) => slot === '귀고리' || slot === '신발'
 const canUseFlatAtk = (slot: string, isMage: boolean) =>
   slot === '무기' || (isMage ? isFlatMagicSlot(slot) : isFlatAtkSlot(slot))
+const EQUIP_INPUT_WIDTH = 72
+const EQUIP_ATK_INPUT_WIDTH = 54
 
 const sanitizeFull = (item: ItemStatFull, slot: string, isMage = false): ItemStatFull => {
   if (slot === '무기') return item
@@ -898,7 +900,7 @@ export default function ItemCompare() {
   return (
     <div
       className="text-left min-h-screen"
-      style={{ fontFamily: "'Pretendard Variable', 'Pretendard', system-ui, sans-serif", background: '#EEF2F7' }}
+      style={{ fontFamily: 'var(--font-sans)', background: '#EEF2F7' }}
     >
       {/* Header */}
       <div className="bg-white border-b border-black/8 px-6 py-3 flex items-center gap-6">
@@ -992,20 +994,20 @@ export default function ItemCompare() {
                         <th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
                         {mode === 2 && (<th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}%</th>)}
                         <th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯%</th>
-                        {mode === 2 && (<th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>)}
+                        {mode === 2 && (<th className="w-[58px] border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground whitespace-nowrap">{atkColLabel}</th>)}
                       </tr>
                     </thead>
                     <tbody>
                       {jobSlotRows.map(s => (
                         <tr key={s} className="hover:bg-muted/20">
                           <td className="border border-border px-2 py-0.5 text-xs text-muted-foreground whitespace-nowrap">{s}</td>
-                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={72} /></td>
-                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={72} /></td>)}
-                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatAllStat} onChange={v => updateSlot(s, 'flatAllStat', v)} max={1000} width={72} /></td>
-                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={72} /></td>
-                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].subStatPercent} onChange={v => updateSlot(s, 'subStatPercent', v)} max={1000} width={72} /></td>)}
-                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={72} /></td>
-                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center">{canUseFlatAtk(s, isMage) ? (<NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={72} />) : (<span className="text-xs text-muted-foreground">-</span>)}</td>)}
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={EQUIP_INPUT_WIDTH} /></td>
+                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={EQUIP_INPUT_WIDTH} /></td>)}
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatAllStat} onChange={v => updateSlot(s, 'flatAllStat', v)} max={1000} width={EQUIP_INPUT_WIDTH} /></td>
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={EQUIP_INPUT_WIDTH} /></td>
+                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].subStatPercent} onChange={v => updateSlot(s, 'subStatPercent', v)} max={1000} width={EQUIP_INPUT_WIDTH} /></td>)}
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={EQUIP_INPUT_WIDTH} /></td>
+                          {mode === 2 && (<td className="w-[58px] border border-border px-0.5 py-0.5 text-center">{canUseFlatAtk(s, isMage) ? (<NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={EQUIP_ATK_INPUT_WIDTH} />) : (<span className="text-xs text-muted-foreground">-</span>)}</td>)}
                         </tr>
                       ))}
                     </tbody>
@@ -1026,20 +1028,20 @@ export default function ItemCompare() {
                         <th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{statLabel}%</th>
                         {mode === 2 && (<th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{subLabel}%</th>)}
                         <th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">올스탯%</th>
-                        {mode === 2 && isMage && (<th className="border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground">{atkColLabel}</th>)}
+                        {mode === 2 && isMage && (<th className="w-[58px] border border-border px-0.5 py-1 text-center text-[11px] font-medium text-muted-foreground whitespace-nowrap">{atkColLabel}</th>)}
                       </tr>
                     </thead>
                     <tbody>
                       {COMMON_SLOTS.map(s => (
                         <tr key={s} className="hover:bg-muted/20">
                           <td className="border border-border px-2 py-0.5 text-xs text-muted-foreground whitespace-nowrap">{s}</td>
-                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={72} /></td>
-                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={72} /></td>)}
-                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatAllStat} onChange={v => updateSlot(s, 'flatAllStat', v)} max={1000} width={72} /></td>
-                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={72} /></td>
-                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].subStatPercent} onChange={v => updateSlot(s, 'subStatPercent', v)} max={1000} width={72} /></td>)}
-                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={72} /></td>
-                          {mode === 2 && isMage && (<td className="border border-border px-0.5 py-0.5 text-center">{isFlatMagicSlot(s) ? (<NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={72} />) : (<span className="text-xs text-muted-foreground">-</span>)}</td>)}
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatStat} onChange={v => updateSlot(s, 'flatStat', v)} max={1000} width={EQUIP_INPUT_WIDTH} /></td>
+                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatSubStat} onChange={v => updateSlot(s, 'flatSubStat', v)} max={1000} width={EQUIP_INPUT_WIDTH} /></td>)}
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].flatAllStat} onChange={v => updateSlot(s, 'flatAllStat', v)} max={1000} width={EQUIP_INPUT_WIDTH} /></td>
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].statPercent} onChange={v => updateSlot(s, 'statPercent', v)} max={1000} width={EQUIP_INPUT_WIDTH} /></td>
+                          {mode === 2 && (<td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].subStatPercent} onChange={v => updateSlot(s, 'subStatPercent', v)} max={1000} width={EQUIP_INPUT_WIDTH} /></td>)}
+                          <td className="border border-border px-0.5 py-0.5 text-center"><NumInput value={slots[s].allStatPercent} onChange={v => updateSlot(s, 'allStatPercent', v)} max={1000} width={EQUIP_INPUT_WIDTH} /></td>
+                          {mode === 2 && isMage && (<td className="w-[58px] border border-border px-0.5 py-0.5 text-center">{isFlatMagicSlot(s) ? (<NumInput value={slots[s].flatAtk} onChange={v => updateSlot(s, 'flatAtk', v)} max={1000} width={EQUIP_ATK_INPUT_WIDTH} />) : (<span className="text-xs text-muted-foreground">-</span>)}</td>)}
                         </tr>
                       ))}
                     </tbody>
@@ -1788,14 +1790,19 @@ export default function ItemCompare() {
               ) : (
               <div className="flex flex-col gap-3">
                 {(() => {
+                  const apPowerLabel = isMage ? '총마력' : '스공'
                   const rows = ([
                     { label: '장착중인 아이템', pick: 'A' },
                     { label: '비교 아이템', pick: 'B' },
                   ] as const).map(({ label, pick }) => {
                     const beforeStat = pick === 'A' ? result.statWithItemA : result.statWithItemB
                     const afterStat = pick === 'A' ? apResult.statWithItemA : apResult.statWithItemB
-                    const beforePower = pick === 'A' ? result.damageWithItemA : result.damageWithItemB
-                    const afterPower = pick === 'A' ? apResult.damageWithItemA : apResult.damageWithItemB
+                    const beforePower = isMage
+                      ? displayMagic(pick === 'A' ? result.magicWithItemA : result.magicWithItemB)
+                      : pick === 'A' ? result.damageWithItemA : result.damageWithItemB
+                    const afterPower = isMage
+                      ? displayMagic(pick === 'A' ? apResult.magicWithItemA : apResult.magicWithItemB)
+                      : pick === 'A' ? apResult.damageWithItemA : apResult.damageWithItemB
                     const beforeNormal = pick === 'A' ? result.expectedNormalDmgWithItemA : result.expectedNormalDmgWithItemB
                     const afterNormal = pick === 'A' ? apResult.expectedNormalDmgWithItemA : apResult.expectedNormalDmgWithItemB
                     const beforeBoss = pick === 'A' ? result.expectedDmgWithItemA : result.expectedDmgWithItemB
@@ -1853,7 +1860,7 @@ export default function ItemCompare() {
                               <div className="grid grid-cols-[1.1fr_0.9fr_0.9fr_0.9fr] border-b border-border bg-muted/40 px-2 py-1.5 text-[10px] font-semibold text-muted-foreground">
                                 <span>아이템</span>
                                 <span className="text-right">{statLabel}</span>
-                                <span className="text-right">스공</span>
+                                <span className="text-right">{apPowerLabel}</span>
                                 <span className="text-right">실질 데미지</span>
                               </div>
                               {rows.map(row => (
@@ -1879,12 +1886,12 @@ export default function ItemCompare() {
                             순수 {statLabel} {apStatShift >= 0 ? '+' : ''}{apStatShift} / 순수 {subLabel} {(-apStatShift) >= 0 ? '+' : ''}{-apStatShift}
                           </span>
                         </div>
-                        <div className="overflow-hidden rounded-md border border-border bg-white/70">
-                          <div className="grid grid-cols-[1.1fr_0.9fr_0.9fr] border-b border-border bg-muted/40 px-2 py-1.5 text-[10px] font-semibold text-muted-foreground">
-                            <span>아이템</span>
-                            <span className="text-right">스공 변화</span>
-                            <span className="text-right">실질 데미지 변화</span>
-                          </div>
+                          <div className="overflow-hidden rounded-md border border-border bg-white/70">
+                            <div className="grid grid-cols-[1.1fr_0.9fr_0.9fr] border-b border-border bg-muted/40 px-2 py-1.5 text-[10px] font-semibold text-muted-foreground">
+                              <span>아이템</span>
+                              <span className="text-right">{apPowerLabel} 변화</span>
+                              <span className="text-right">실질 데미지 변화</span>
+                            </div>
                           {rows.map(row => (
                             <div key={row.label} className="grid grid-cols-[1.1fr_0.9fr_0.9fr] items-center border-b border-border/70 px-2 py-2 text-xs last:border-b-0">
                               <span className="font-medium text-foreground">{row.label}</span>
