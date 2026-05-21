@@ -9,6 +9,7 @@ import {
   type WeaponType, type ItemStatFull, type ItemStat,
   type StatCompareResponse, type DamageCompareResponse, type StatConvResponse,
 } from '@/api/calculator'
+import { ApiError } from '@/api/client'
 import { trackEvent } from '@/api/analytics'
 import { savePreset, loadPreset, resetPresetPassword, type PresetConfig } from '@/api/preset'
 import { Activity, Calculator } from 'lucide-react'
@@ -316,6 +317,50 @@ function requiredBaseStat(requirement: number, flat: number, percent: number, mw
   return Math.max(0, Math.ceil(numerator / denominator))
 }
 
+type ConvImpact = {
+  atkEquivalent: number
+  mainValue?: number
+  redistributedAp: number
+}
+
+type PresetAction = 'save' | 'load' | 'reset' | null
+type PresetMessage = { type: 'ok' | 'err' | 'info'; text: string }
+
+function presetErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    const message = error.message
+
+    if (error.status === 429 || message.includes('Too many requests')) {
+      return '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.'
+    }
+    if (error.status === 413 || message.includes('too large')) {
+      return '저장할 데이터가 너무 큽니다. 입력값을 줄인 뒤 다시 시도해주세요.'
+    }
+    if (message.includes('비밀번호가 틀렸')) {
+      return '비밀번호가 틀렸습니다. 다시 확인해주세요.'
+    }
+    if (message.includes('비밀번호를 설정')) {
+      return '저장하려면 비밀번호를 입력해주세요.'
+    }
+    if (message.includes('닉네임') || message.includes('not found')) {
+      return '해당 닉네임의 프리셋을 찾을 수 없습니다.'
+    }
+    if (message.includes('Invalid request')) {
+      return '입력값을 다시 확인해주세요.'
+    }
+    if (error.status >= 500) {
+      return '서버에서 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'
+    }
+    return message || fallback
+  }
+
+  if (error instanceof TypeError) {
+    return '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.'
+  }
+
+  return fallback
+}
+
 function BuffLabel({ icon, children }: { icon: string; children: React.ReactNode }) {
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -486,10 +531,12 @@ export default function ItemCompare() {
   const [result, setResult] = useState<StatCompareResponse | DamageCompareResponse | null>(null)
   const [calculating, setCalculating] = useState(false)
   const [convResult, setConvResult] = useState<StatConvResponse | null>(null)
+  const [convImpacts, setConvImpacts] = useState<Record<string, ConvImpact> | null>(null)
 
   const [nickname, setNickname] = useState('')
   const [password, setPassword] = useState('')
-  const [presetMsg, setPresetMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [presetMsg, setPresetMsg] = useState<PresetMessage | null>(null)
+  const [presetAction, setPresetAction] = useState<PresetAction>(null)
 
   // AP 재분배 시뮬레이터
   const [apReverseReq, setApReverseReq] = useState(0)
@@ -687,32 +734,130 @@ export default function ItemCompare() {
 
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (mode !== 2 || baseStat <= 0) { setConvResult(null); return }
+      if (mode !== 2 || baseStat <= 0) { setConvResult(null); setConvImpacts(null); return }
       try {
+        const conversionSlots = withWeaponSlot(getActiveSlots())
+        const equippedItems = conversionSlots.map(s => sanitizeFull(slots[s], s, isMage))
         const res = await statConv({
           baseStat, subStat, weaponType, weaponAtk,
           mapleWarriorLevel, blessingLevel, empressBlessingLevel,
           meditationLevel, rageLevel, babyDragonFood,
           hontaleVictory,
           ammoAtk: usesAmmo ? ammoAtk : 0,
-          equippedItems: withWeaponSlot(getActiveSlots()).map(s => sanitizeFull(slots[s], s, isMage)),
+          equippedItems,
         })
         setConvResult(res)
+
+        const subFlat = conversionSlots.reduce((sum, slot) => sum + slots[slot].flatSubStat + slots[slot].flatAllStat, 0)
+        const subPercent = conversionSlots.reduce((sum, slot) => sum + slots[slot].subStatPercent + slots[slot].allStatPercent, 0)
+        const mwPct = mapleWarriorLevel > 0 ? Math.floor((mapleWarriorLevel + 1) / 2) : 0
+        const currentSubRequirement = effectiveStat(subStat, subFlat, subPercent, mwPct)
+        const allStatSubNeed = requiredBaseStat(currentSubRequirement, subFlat, subPercent + 1, mwPct)
+        const redistributedAp = Math.max(0, Math.min(subStat, subStat - allStatSubNeed))
+
+        if (!isMage) {
+          const physicalMainValues = {
+            statPct: res.statPct1ToMainStat,
+            allStatPct: redistributedAp > 0
+              ? res.statPct1ToMainStat + redistributedAp
+              : res.allStatPct1ToMainStat,
+            atkPct: res.atkPct1ToMainStat,
+            flatAtk: res.flatAtk1ToMainStat,
+            bossDmgPct: res.bossDmgPct1ToMainStat,
+            totalDmgPct: res.totalDmgPct1ToMainStat,
+          }
+          setConvImpacts(Object.fromEntries(
+            Object.entries(physicalMainValues).map(([key, value]) => [
+              key,
+              {
+                mainValue: value,
+                atkEquivalent: key === 'atkPct'
+                  ? res.atkPct1
+                  : res.flatAtk1ToMainStat > 0 ? value / res.flatAtk1ToMainStat : 0,
+                redistributedAp: key === 'allStatPct' ? redistributedAp : 0,
+              },
+            ]),
+          ))
+          return
+        }
+
+        const baseRequest = {
+          job, weaponType, weaponAtk, atkPercent: 0,
+          blessingLevel, empressBlessingLevel, mapleWarriorLevel, meditationLevel, rageLevel,
+          sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk: usesAmmo ? ammoAtk : 0,
+          critRate, critDmgPP, skillCoeff,
+          equippedItems,
+          currentSlotItem: null,
+          itemA: emptyFull(),
+        }
+        const impactOptions: { key: string; item: ItemStatFull; redistributedAp?: number }[] = [
+          { key: 'statPct', item: { ...emptyFull(), statPercent: 1 } },
+          { key: 'allStatPct', item: { ...emptyFull(), allStatPercent: 1 }, redistributedAp },
+          { key: 'atkPct', item: { ...emptyFull(), atkPercent: 1 } },
+          { key: 'flatAtk', item: { ...emptyFull(), flatAtk: 1 } },
+          { key: 'bossDmgPct', item: { ...emptyFull(), bossDmgPercent: 1 } },
+          { key: 'totalDmgPct', item: { ...emptyFull(), totalDmgPercent: 1 } },
+        ]
+        const [baseline, flatAtkBaseline, ...impactResults] = await Promise.all([
+          damageCompare({
+            ...baseRequest,
+            baseStat,
+            subStat,
+            itemB: emptyFull(),
+          }),
+          damageCompare({
+            ...baseRequest,
+            baseStat,
+            subStat,
+            itemB: { ...emptyFull(), flatAtk: 1 },
+          }),
+          ...impactOptions.map(option => damageCompare({
+            ...baseRequest,
+            baseStat: baseStat + (option.redistributedAp ?? 0),
+            subStat: subStat - (option.redistributedAp ?? 0),
+            itemB: option.item,
+          })),
+        ])
+        const flatAtkExpectedGain = flatAtkBaseline.expectedDmgWithItemB - baseline.expectedDmgWithItemA
+        const impactEntries = impactOptions.map((option, index) => {
+          const after = impactResults[index]
+          const actualAtkGain = isMage
+            ? displayMagic(after.magicWithItemB) - displayMagic(baseline.magicWithItemA)
+            : after.damageWithItemB - baseline.damageWithItemA
+          const expectedGain = after.expectedDmgWithItemB - baseline.expectedDmgWithItemA
+          const atkEquivalent = option.key === 'atkPct'
+            ? res.atkPct1
+            : actualAtkGain !== 0
+              ? actualAtkGain
+              : flatAtkExpectedGain > 0 ? expectedGain / flatAtkExpectedGain : 0
+          return [option.key, {
+            atkEquivalent,
+            redistributedAp: option.redistributedAp ?? 0,
+          }] as const
+        })
+        setConvImpacts(Object.fromEntries(impactEntries))
       } catch {
         setConvResult(null)
+        setConvImpacts(null)
       }
     }, 400)
     return () => clearTimeout(timer)
   }, [
-    mode, baseStat, subStat, weaponType, weaponAtk,
+    mode, job, baseStat, subStat, weaponType, weaponAtk,
     mapleWarriorLevel, blessingLevel, empressBlessingLevel,
-    meditationLevel, rageLevel, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo,
+    meditationLevel, rageLevel, sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo,
+    critRate, critDmgPP, skillCoeff,
     slots, getActiveSlots, isMage,
   ])
 
   async function handleSave() {
-    if (!nickname.trim()) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
-    if (!password.trim()) { setPresetMsg({ type: 'err', text: '비밀번호를 설정해주세요.' }); return }
+    if (presetAction) return
+    const name = nickname.trim()
+    const presetPassword = password.trim()
+    if (!name) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
+    if (!presetPassword) { setPresetMsg({ type: 'err', text: '저장하려면 비밀번호를 입력해주세요.' }); return }
+    setPresetAction('save')
+    setPresetMsg({ type: 'info', text: '프리셋 저장 중...' })
     try {
       const config: PresetConfig = {
         job, mode, baseStat, subStat, weaponType, compareWeaponType, weaponAtk, atkPercent: 0,
@@ -723,20 +868,24 @@ export default function ItemCompare() {
         critRate, critDmgPP, skillCoeff,
         useOverall, slots, compareSlot, compareItem,
       }
-      const res = await savePreset({ nickname: nickname.trim(), password, config })
+      const res = await savePreset({ nickname: name, password: presetPassword, config })
       trackEvent('PRESET_SAVE')
-      setPresetMsg({ type: 'ok', text: `"${res.nickname}" 저장 완료!` })
+      setPresetMsg({ type: 'ok', text: `"${res.nickname}" 프리셋을 저장했습니다.` })
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : ''
-      const isReadable = msg && !/^\d{3}\s/.test(msg)
-      setPresetMsg({ type: 'err', text: isReadable ? msg : '저장 실패. 잠시 후 다시 시도해주세요.' })
+      setPresetMsg({ type: 'err', text: presetErrorMessage(e, '저장에 실패했습니다. 잠시 후 다시 시도해주세요.') })
+    } finally {
+      setPresetAction(null)
     }
   }
 
   async function handleLoad() {
-    if (!nickname.trim()) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
+    if (presetAction) return
+    const name = nickname.trim()
+    if (!name) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
+    setPresetAction('load')
+    setPresetMsg({ type: 'info', text: '프리셋 불러오는 중...' })
     try {
-      const res = await loadPreset({ nickname: nickname.trim(), password: password || undefined })
+      const res = await loadPreset({ nickname: name, password: password.trim() || undefined })
       trackEvent('PRESET_LOAD')
       const c = res.config as Partial<PresetConfig>
       const loadedJob = c.job && JOB_DEFAULT_WEAPON[c.job] ? c.job : job
@@ -756,6 +905,7 @@ export default function ItemCompare() {
       setResult(null)
       setApResult(null)
       setConvResult(null)
+      setConvImpacts(null)
       setJob(loadedJob); setMode(loadedMode); setBaseStat(numberOrZero(c.baseStat)); setSubStat(numberOrZero(c.subStat))
       setWeaponType(loadedWeaponType); setCompareWeaponType(loadedCompareWeaponType); setWeaponAtk(numberOrZero(c.weaponAtk))
       setBlessingLevel(numberOrZero(c.blessingLevel)); setEmPressBlessingLevel(numberOrZero(c.empressBlessingLevel))
@@ -776,21 +926,28 @@ export default function ItemCompare() {
       setSkillCoeff(numberOrFallback(c.skillCoeff, JOB_SKILL_COEFF[loadedJob] ?? 150))
       setUseOverall(loadedUseOverall); setSlots(normalizeSlots(c.slots)); setCompareSlot(loadedCompareSlot)
       setCompareItem(normalizeFull(c.compareItem ?? c.itemB ?? c.itemA))
-      setPresetMsg({ type: 'ok', text: `"${res.nickname}" 불러오기 완료!` })
+      setPresetMsg({ type: 'ok', text: `"${res.nickname}" 프리셋을 불러왔습니다.` })
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : ''
-      setPresetMsg({ type: 'err', text: msg.includes('Too many requests') ? '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' : '해당 닉네임을 찾을 수 없습니다.' })
+      setPresetMsg({ type: 'err', text: presetErrorMessage(e, '불러오기에 실패했습니다. 닉네임과 비밀번호를 확인해주세요.') })
+    } finally {
+      setPresetAction(null)
     }
   }
 
   async function handleResetPassword() {
-    if (!nickname.trim()) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
+    if (presetAction) return
+    const name = nickname.trim()
+    if (!name) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
+    setPresetAction('reset')
+    setPresetMsg({ type: 'info', text: '비밀번호 초기화 중...' })
     try {
-      await resetPresetPassword({ nickname: nickname.trim(), currentPassword: password || undefined })
+      await resetPresetPassword({ nickname: name, currentPassword: password.trim() || undefined })
       setPassword('')
-      setPresetMsg({ type: 'ok', text: '비밀번호가 초기화되었습니다.' })
-    } catch {
-      setPresetMsg({ type: 'err', text: '비밀번호가 틀렸거나 닉네임을 찾을 수 없습니다.' })
+      setPresetMsg({ type: 'ok', text: '비밀번호를 초기화했습니다. 다음 저장 때 새 비밀번호를 설정할 수 있습니다.' })
+    } catch (e: unknown) {
+      setPresetMsg({ type: 'err', text: presetErrorMessage(e, '초기화에 실패했습니다. 닉네임과 현재 비밀번호를 확인해주세요.') })
+    } finally {
+      setPresetAction(null)
     }
   }
 
@@ -886,6 +1043,12 @@ export default function ItemCompare() {
     : apStatShift < 0
       ? `순수 ${statLabel} -${apShiftAbs} / 순수 ${subLabel} +${apShiftAbs}`
       : `순수 ${statLabel}, ${subLabel} 변화 없음`
+  const isPresetBusy = presetAction !== null
+  const presetMessageClass = presetMsg?.type === 'ok'
+    ? 'border-win/20 bg-win-bg text-win'
+    : presetMsg?.type === 'info'
+      ? 'border-maple/20 bg-maple-bg text-maple'
+      : 'border-lose/20 bg-red-50 text-lose'
 
   useEffect(() => {
     document.title = '메이플 플래닛 아이템 비교 · 환산 계산기 | PlanetCompare'
@@ -1460,13 +1623,14 @@ export default function ItemCompare() {
           {mode === 2 && convResult !== null && (() => {
             const atkLabel = isMage ? '마력' : '공격력'
             const rawMainStat1ToFinal = convResult.mainStatMultiplier
+            const atkEqLabel = isMage ? '마력' : '공격력'
             const convOptions = [
-              { label: `${statLabel}% 1%`, value: convResult.statPct1ToMainStat },
-              { label: '올스탯% 1%', value: convResult.allStatPct1ToMainStat },
-              { label: `${atkLabel}% 1%`, value: convResult.atkPct1ToMainStat },
-              { label: `${atkLabel} 1`, value: convResult.flatAtk1ToMainStat },
-              { label: '보공% 1%', value: convResult.bossDmgPct1ToMainStat },
-              { label: '총뎀% 1%', value: convResult.totalDmgPct1ToMainStat },
+              { key: 'statPct', label: `${statLabel} 1%`, value: convResult.statPct1ToMainStat },
+              { key: 'allStatPct', label: '올스탯 1%', value: convResult.allStatPct1ToMainStat },
+              { key: 'atkPct', label: `${atkLabel} 1%`, value: convResult.atkPct1ToMainStat },
+              { key: 'flatAtk', label: `${atkLabel} 1`, value: convResult.flatAtk1ToMainStat },
+              { key: 'bossDmgPct', label: '보공 1%', value: convResult.bossDmgPct1ToMainStat },
+              { key: 'totalDmgPct', label: '총뎀 1%', value: convResult.totalDmgPct1ToMainStat },
             ]
             return (
               <div className="border-t border-border pt-4 flex flex-col gap-2">
@@ -1484,15 +1648,26 @@ export default function ItemCompare() {
                       {statLabel}1 증가시 최종 {statLabel} {rawMainStat1ToFinal.toFixed(2)} 상승
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                    {convOptions.map(opt => (
-                      <div key={opt.label} className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-muted-foreground">{opt.label}</span>
-                        <span className="font-semibold text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                          {statLabel} +{opt.value.toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="divide-y divide-border rounded-md border border-border bg-background">
+                    {convOptions.map(opt => {
+                      const impact = convImpacts?.[opt.key]
+                      const redistributedValue = opt.key === 'allStatPct' ? impact?.redistributedAp ?? 0 : 0
+                      const mainValue = impact?.mainValue ?? opt.value + redistributedValue
+                      const atkEquivalent = impact?.atkEquivalent ?? 0
+                      return (
+                        <div key={opt.key} className="grid grid-cols-[92px_minmax(0,1fr)] items-center gap-3 px-3 py-2 text-xs">
+                          <span className="text-muted-foreground">{opt.label}</span>
+                          <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-right">
+                            <span className="font-semibold text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                              {statLabel} +{mainValue.toFixed(2)}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {atkEqLabel} 환산 <span className="font-semibold text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>+{atkEquivalent.toFixed(2)}</span>
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -1580,30 +1755,39 @@ export default function ItemCompare() {
               <input
                 type="text" placeholder="닉네임" value={nickname}
                 onChange={e => setNickname(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') void handleLoad() }}
+                disabled={isPresetBusy}
                 className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
               />
               <input
                 type="password" placeholder="비밀번호" value={password}
                 onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') void handleLoad() }}
+                disabled={isPresetBusy}
                 className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
             <div className="flex gap-1.5">
-              <button onClick={handleSave}
-                className="h-7 flex-1 rounded bg-maple text-white text-xs font-medium hover:bg-maple/90 transition-colors">
-                저장
+              <button onClick={handleSave} disabled={isPresetBusy}
+                className="h-7 flex-1 rounded bg-maple text-white text-xs font-medium hover:bg-maple/90 disabled:cursor-not-allowed disabled:opacity-60 transition-colors">
+                {presetAction === 'save' ? '저장 중' : '저장'}
               </button>
-              <button onClick={handleLoad}
-                className="h-7 flex-1 rounded border border-border bg-background text-xs font-medium hover:bg-muted transition-colors">
-                불러오기
+              <button onClick={handleLoad} disabled={isPresetBusy}
+                className="h-7 flex-1 rounded border border-border bg-background text-xs font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60 transition-colors">
+                {presetAction === 'load' ? '불러오는 중' : '불러오기'}
               </button>
-              <button onClick={handleResetPassword}
-                className="h-7 flex-1 rounded border border-border bg-background text-xs font-medium hover:bg-muted transition-colors">
-                비번 초기화
+              <button onClick={handleResetPassword} disabled={isPresetBusy}
+                className="h-7 flex-1 rounded border border-border bg-background text-xs font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60 transition-colors">
+                {presetAction === 'reset' ? '초기화 중' : '비번 초기화'}
               </button>
             </div>
+            <p className="text-[10px] leading-4 text-muted-foreground">
+              저장은 비밀번호가 필요합니다. 불러오기와 초기화는 저장 당시 비밀번호를 입력해야 합니다.
+            </p>
             {presetMsg && (
-              <p className={`text-xs ${presetMsg.type === 'ok' ? 'text-win' : 'text-lose'}`}>{presetMsg.text}</p>
+              <p role={presetMsg.type === 'err' ? 'alert' : 'status'} className={`rounded-md border px-2 py-1.5 text-xs ${presetMessageClass}`}>
+                {presetMsg.text}
+              </p>
             )}
           </div>
         </div>

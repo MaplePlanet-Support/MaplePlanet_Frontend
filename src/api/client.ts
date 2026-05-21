@@ -1,15 +1,37 @@
 const BASE_URL = '/api'
 
+export class ApiError extends Error {
+  status: number
+  errors: unknown[]
+
+  constructor(message: string, status: number, errors: unknown[] = []) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.errors = errors
+  }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   })
-  if (!res.ok) {
-    const errBody = await res.json().catch(() => null)
-    throw new Error(errBody?.message ?? `${res.status} ${res.statusText}`)
+  const text = await res.text()
+  let body: { message?: string; errors?: unknown[] } | null
+  try {
+    body = text ? JSON.parse(text) : null
+  } catch {
+    body = null
   }
-  return res.json() as Promise<T>
+  if (!res.ok) {
+    throw new ApiError(
+      body?.message ?? `${res.status} ${res.statusText}`,
+      res.status,
+      Array.isArray(body?.errors) ? body.errors : [],
+    )
+  }
+  return body as T
 }
 
 export const api = {
