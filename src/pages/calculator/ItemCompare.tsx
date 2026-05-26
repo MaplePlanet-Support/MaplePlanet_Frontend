@@ -12,7 +12,7 @@ import {
 import { ApiError } from '@/api/client'
 import { trackEvent } from '@/api/analytics'
 import { savePreset, loadPreset, resetPresetPassword, type PresetConfig } from '@/api/preset'
-import { Activity, Calculator } from 'lucide-react'
+import { Activity, Calculator, X } from 'lucide-react'
 
 const JOB_STAT: Record<string, string> = {
   전사: 'STR', 마법사: 'INT', 궁수: 'DEX', 도적: 'LUK', '해적(바이퍼)': 'STR', '해적(캡틴)': 'DEX',
@@ -543,6 +543,7 @@ export default function ItemCompare() {
   const [password, setPassword] = useState('')
   const [presetMsg, setPresetMsg] = useState<PresetMessage | null>(null)
   const [presetAction, setPresetAction] = useState<PresetAction>(null)
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false)
 
   // AP 재분배 시뮬레이터
   const [apReverseReq, setApReverseReq] = useState(0)
@@ -864,6 +865,16 @@ export default function ItemCompare() {
     const presetPassword = password.trim()
     if (!name) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
     if (!presetPassword) { setPresetMsg({ type: 'err', text: '저장하려면 비밀번호를 입력해주세요.' }); return }
+    setSaveConfirmOpen(true)
+  }
+
+  async function confirmSavePreset() {
+    if (presetAction) return
+    const name = nickname.trim()
+    const presetPassword = password.trim()
+    if (!name) { setSaveConfirmOpen(false); setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
+    if (!presetPassword) { setSaveConfirmOpen(false); setPresetMsg({ type: 'err', text: '저장하려면 비밀번호를 입력해주세요.' }); return }
+    setSaveConfirmOpen(false)
     setPresetAction('save')
     setPresetMsg({ type: 'info', text: '프리셋 저장 중...' })
     try {
@@ -901,9 +912,7 @@ export default function ItemCompare() {
       const loadedMode: Mode = loadedModeValue === 1 || loadedModeValue === 2 ? loadedModeValue : mode
       const loadedUseOverall = c.useOverall ?? false
       const loadedActiveSlots = ALL_SLOTS.filter(s => loadedUseOverall ? s !== '상의' && s !== '하의' : s !== '한벌옷')
-      const loadedCompareSlot = c.compareSlot === ''
-        ? ''
-        : c.compareSlot && loadedActiveSlots.includes(c.compareSlot) ? c.compareSlot : loadedActiveSlots[0]
+      const loadedCompareSlot = c.compareSlot && loadedActiveSlots.includes(c.compareSlot) ? c.compareSlot : loadedActiveSlots[0]
       const loadedWeaponType = normalizeWeaponType(c.weaponType, loadedJob)
       const loadedCompareWeaponType = c.compareWeaponType
         ? normalizeWeaponType(c.compareWeaponType, loadedJob)
@@ -1299,10 +1308,9 @@ export default function ItemCompare() {
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">비교 아이템</div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">교체 슬롯</span>
-                <Select value={compareSlot} onValueChange={v => setCompareSlot(v ?? '')}>
+                <Select value={compareSlot} onValueChange={v => { if (v) setCompareSlot(v) }}>
                   <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">빈 슬롯</SelectItem>
                     {activeSlots.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -2216,6 +2224,57 @@ export default function ItemCompare() {
         )}
       </div>
       </div>
+      {saveConfirmOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          role="presentation"
+          onMouseDown={() => setSaveConfirmOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="save-preset-title"
+            className="w-full max-w-sm rounded-xl border border-black/10 bg-white p-4 shadow-2xl"
+            onMouseDown={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 id="save-preset-title" className="text-base font-semibold text-foreground">프리셋 저장</h2>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  <span className="font-semibold text-foreground">{nickname.trim()}</span> 프리셋을 저장하시겠습니까?
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSaveConfirmOpen(false)}
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="닫기"
+              >
+                <X className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="mt-3 rounded-lg border border-maple/20 bg-maple-bg px-3 py-2 text-xs leading-5 text-muted-foreground">
+              현재 입력한 캐릭터, 장비, 비교 아이템, 버프 설정이 이 닉네임에 저장됩니다.
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setSaveConfirmOpen(false)}
+                className="h-8 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmSavePreset()}
+                className="h-8 rounded-md bg-maple px-3 text-xs font-semibold text-white transition-colors hover:bg-maple/90"
+              >
+                저장하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <SeoContent />
     </div>
   )
