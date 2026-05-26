@@ -608,8 +608,6 @@ export default function ItemCompare() {
       const aStatA = activeSlotsList.reduce((s, k) => s + slots[k].allStatPercent + slots[k].subStatPercent, 0)
       const fSubWithoutCurrent = fSubA - slots[compareSlot].flatSubStat
       const aStatWithoutCurrent = aStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent)
-      const fSubB = fSubA - slots[compareSlot].flatSubStat + compareItem.flatSubStat
-      const aStatB = aStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent) + (compareItem.allStatPercent + (compareItem.subStatPercent ?? 0))
       const mwPct = mapleWarriorLevel > 0 ? Math.floor((mapleWarriorLevel + 1) / 2) : 0
       const currentSubStat = effectiveStat(subStat, fSubA, aStatA, mwPct)
       const topReq1 = Math.min(apTopReq1, currentSubStat)
@@ -893,6 +891,7 @@ export default function ItemCompare() {
     } catch (e: unknown) {
       setPresetMsg({ type: 'err', text: presetErrorMessage(e, '저장에 실패했습니다. 잠시 후 다시 시도해주세요.') })
     } finally {
+      setPassword('')
       setPresetAction(null)
     }
   }
@@ -950,6 +949,7 @@ export default function ItemCompare() {
     } catch (e: unknown) {
       setPresetMsg({ type: 'err', text: presetErrorMessage(e, '불러오기에 실패했습니다. 닉네임과 비밀번호를 확인해주세요.') })
     } finally {
+      setPassword('')
       setPresetAction(null)
     }
   }
@@ -962,11 +962,11 @@ export default function ItemCompare() {
     setPresetMsg({ type: 'info', text: '비밀번호 초기화 중...' })
     try {
       await resetPresetPassword({ nickname: name, currentPassword: password.trim() || undefined })
-      setPassword('')
       setPresetMsg({ type: 'ok', text: '비밀번호를 초기화했습니다. 다음 저장 때 새 비밀번호를 설정할 수 있습니다.' })
     } catch (e: unknown) {
       setPresetMsg({ type: 'err', text: presetErrorMessage(e, '초기화에 실패했습니다. 닉네임과 현재 비밀번호를 확인해주세요.') })
     } finally {
+      setPassword('')
       setPresetAction(null)
     }
   }
@@ -1024,8 +1024,6 @@ export default function ItemCompare() {
   const apAllStatA = activeSlots.reduce((s, k) => s + slots[k].allStatPercent + slots[k].subStatPercent, 0)
   const apFlatSubWithoutCurrent = apFlatSubA - slots[compareSlot].flatSubStat
   const apAllStatWithoutCurrent = apAllStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent)
-  const apFlatSubB = apFlatSubA - slots[compareSlot].flatSubStat + compareItem.flatSubStat
-  const apAllStatB = apAllStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent) + (compareItem.allStatPercent + (compareItem.subStatPercent ?? 0))
   const mwPct = mapleWarriorLevel > 0 ? Math.floor((mapleWarriorLevel + 1) / 2) : 0
   const apCurrentSubStat = effectiveStat(subStat, apFlatSubA, apAllStatA, mwPct)
   const apEffectiveTopReq1 = Math.min(apTopReq1, apCurrentSubStat)
@@ -1814,6 +1812,8 @@ export default function ItemCompare() {
                 type="password" placeholder="비밀번호" value={password}
                 onChange={e => setPassword(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') void handleLoad() }}
+                autoComplete="off"
+                name="preset-password"
                 disabled={isPresetBusy}
                 className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
               />
