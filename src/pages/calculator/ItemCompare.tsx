@@ -616,7 +616,7 @@ export default function ItemCompare() {
       const topReq2 = Math.min(apTopReq2, currentSubStat)
       const remainingEquippedReq = apCompareIsTop1 ? topReq2 : topReq1
       const needForCompareItem = requiredBaseStat(apCompareItemReq, fSubWithoutCurrent, aStatWithoutCurrent, mwPct)
-      const needForEquippedItems = requiredBaseStat(remainingEquippedReq, fSubB, aStatB, mwPct)
+      const needForEquippedItems = requiredBaseStat(remainingEquippedReq, fSubWithoutCurrent, aStatWithoutCurrent, mwPct)
       const needB = Math.max(needForCompareItem, needForEquippedItems)
       const statShift = subStat - needB
       const redistributedBaseStat = baseStat + statShift
@@ -1040,7 +1040,7 @@ export default function ItemCompare() {
     ? requiredBaseStat(apCompareItemReq, apFlatSubWithoutCurrent, apAllStatWithoutCurrent, mwPct)
     : 0
   const apNeedForEquippedItems = apEffectiveTopReq1 > 0
-    ? requiredBaseStat(apRemainingEquippedReq, apFlatSubB, apAllStatB, mwPct)
+    ? requiredBaseStat(apRemainingEquippedReq, apFlatSubWithoutCurrent, apAllStatWithoutCurrent, mwPct)
     : 0
   const apNeedB = Math.max(apNeedForCompareItem, apNeedForEquippedItems)
   const apEffReq = Math.max(apRemainingEquippedReq, apCompareItemReq)
