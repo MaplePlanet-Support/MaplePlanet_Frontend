@@ -236,7 +236,7 @@ const GUIDE: Record<Mode, { summary: string; details: { label: string; desc: str
     details: [
       { label: '현재 장비 스탯', desc: '장착 중인 모든 아이템의 깡스탯 · 스탯%를 슬롯별로 입력하세요.' },
       { label: '비교 아이템', desc: '교체하려는 아이템의 스탯을 입력하면 주스탯 증감을 즉시 확인할 수 있습니다.' },
-      { label: '프리셋', desc: '닉네임(+선택 비밀번호)으로 현재 설정을 저장·불러올 수 있습니다.' },
+      { label: '프리셋', desc: '닉네임(+저장 코드)으로 현재 설정을 저장·불러올 수 있습니다.' },
     ],
   },
   2: {
@@ -245,7 +245,7 @@ const GUIDE: Record<Mode, { summary: string; details: { label: string; desc: str
       { label: '현재 장비 스탯', desc: '깡스탯·스탯%·올스탯%·공격력·크확·총뎀·보공을 슬롯별로 입력하세요.' },
       { label: '비교 아이템', desc: '교체하려는 아이템 스탯을 입력하면 스공·실질 데미지 차이를 비율(%)로 확인할 수 있습니다.' },
       { label: '스킬', desc: '정령의 축복·메용 등 현재 적용 중인 버프 레벨을 입력하세요.' },
-      { label: '프리셋', desc: '닉네임(+선택 비밀번호)으로 현재 설정을 저장·불러올 수 있습니다.' },
+      { label: '프리셋', desc: '닉네임(+저장 코드)으로 현재 설정을 저장·불러올 수 있습니다.' },
     ],
   },
 }
@@ -341,10 +341,10 @@ function presetErrorMessage(error: unknown, fallback: string) {
       return '저장할 데이터가 너무 큽니다. 입력값을 줄인 뒤 다시 시도해주세요.'
     }
     if (message.includes('비밀번호가 틀렸')) {
-      return '비밀번호가 틀렸습니다. 다시 확인해주세요.'
+      return '저장 코드가 틀렸습니다. 다시 확인해주세요.'
     }
     if (message.includes('비밀번호를 설정')) {
-      return '저장하려면 비밀번호를 입력해주세요.'
+      return '저장하려면 저장 코드를 입력해주세요.'
     }
     if (message.includes('닉네임') || message.includes('not found')) {
       return '해당 닉네임의 프리셋을 찾을 수 없습니다.'
@@ -862,7 +862,7 @@ export default function ItemCompare() {
     const name = nickname.trim()
     const presetPassword = password.trim()
     if (!name) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
-    if (!presetPassword) { setPresetMsg({ type: 'err', text: '저장하려면 비밀번호를 입력해주세요.' }); return }
+    if (!presetPassword) { setPresetMsg({ type: 'err', text: '저장하려면 저장 코드를 입력해주세요.' }); return }
     setSaveConfirmOpen(true)
   }
 
@@ -871,7 +871,7 @@ export default function ItemCompare() {
     const name = nickname.trim()
     const presetPassword = password.trim()
     if (!name) { setSaveConfirmOpen(false); setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
-    if (!presetPassword) { setSaveConfirmOpen(false); setPresetMsg({ type: 'err', text: '저장하려면 비밀번호를 입력해주세요.' }); return }
+    if (!presetPassword) { setSaveConfirmOpen(false); setPresetMsg({ type: 'err', text: '저장하려면 저장 코드를 입력해주세요.' }); return }
     setSaveConfirmOpen(false)
     setPresetAction('save')
     setPresetMsg({ type: 'info', text: '프리셋 저장 중...' })
@@ -947,7 +947,7 @@ export default function ItemCompare() {
       setCompareItem(normalizeFull(c.compareItem ?? c.itemB ?? c.itemA))
       setPresetMsg({ type: 'ok', text: `"${res.nickname}" 프리셋을 불러왔습니다.` })
     } catch (e: unknown) {
-      setPresetMsg({ type: 'err', text: presetErrorMessage(e, '불러오기에 실패했습니다. 닉네임과 비밀번호를 확인해주세요.') })
+      setPresetMsg({ type: 'err', text: presetErrorMessage(e, '불러오기에 실패했습니다. 닉네임과 저장 코드를 확인해주세요.') })
     } finally {
       setPassword('')
       setPresetAction(null)
@@ -959,12 +959,12 @@ export default function ItemCompare() {
     const name = nickname.trim()
     if (!name) { setPresetMsg({ type: 'err', text: '닉네임을 입력해주세요.' }); return }
     setPresetAction('reset')
-    setPresetMsg({ type: 'info', text: '비밀번호 초기화 중...' })
+    setPresetMsg({ type: 'info', text: '저장 코드 초기화 중...' })
     try {
       await resetPresetPassword({ nickname: name, currentPassword: password.trim() || undefined })
-      setPresetMsg({ type: 'ok', text: '비밀번호를 초기화했습니다. 다음 저장 때 새 비밀번호를 설정할 수 있습니다.' })
+      setPresetMsg({ type: 'ok', text: '저장 코드를 초기화했습니다. 다음 저장 때 새 저장 코드를 설정할 수 있습니다.' })
     } catch (e: unknown) {
-      setPresetMsg({ type: 'err', text: presetErrorMessage(e, '초기화에 실패했습니다. 닉네임과 현재 비밀번호를 확인해주세요.') })
+      setPresetMsg({ type: 'err', text: presetErrorMessage(e, '초기화에 실패했습니다. 닉네임과 현재 저장 코드를 확인해주세요.') })
     } finally {
       setPassword('')
       setPresetAction(null)
@@ -1809,11 +1809,11 @@ export default function ItemCompare() {
                 className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
               />
               <input
-                type="password" placeholder="비밀번호" value={password}
+                type="password" placeholder="저장 코드" value={password}
                 onChange={e => setPassword(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') void handleLoad() }}
-                autoComplete="off"
-                name="preset-password"
+                autoComplete="new-password"
+                name="preset-secret"
                 disabled={isPresetBusy}
                 className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
               />
@@ -1829,11 +1829,11 @@ export default function ItemCompare() {
               </button>
               <button onClick={handleResetPassword} disabled={isPresetBusy}
                 className="h-7 flex-1 rounded border border-border bg-background text-xs font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60 transition-colors">
-                {presetAction === 'reset' ? '초기화 중' : '비번 초기화'}
+                {presetAction === 'reset' ? '초기화 중' : '코드 초기화'}
               </button>
             </div>
             <p className="text-[10px] leading-4 text-muted-foreground">
-              저장은 비밀번호가 필요합니다. 불러오기와 초기화는 저장 당시 비밀번호를 입력해야 합니다.
+              저장은 저장 코드가 필요합니다. 불러오기와 초기화는 저장 당시 저장 코드를 입력해야 합니다.
             </p>
             {presetMsg && (
               <p role={presetMsg.type === 'err' ? 'alert' : 'status'} className={`rounded-md border px-2 py-1.5 text-xs ${presetMessageClass}`}>
