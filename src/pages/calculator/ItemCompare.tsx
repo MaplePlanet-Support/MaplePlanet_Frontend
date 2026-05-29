@@ -12,6 +12,7 @@ import {
 import { ApiError } from '@/api/client'
 import { trackEvent } from '@/api/analytics'
 import { savePreset, loadPreset, resetPresetPassword, type PresetConfig } from '@/api/preset'
+import { setPageMeta } from '@/lib/seo'
 import { Activity, Calculator, X } from 'lucide-react'
 
 const JOB_STAT: Record<string, string> = {
@@ -1069,13 +1070,11 @@ export default function ItemCompare() {
       : 'border-lose/20 bg-red-50 text-lose'
 
   useEffect(() => {
-    document.title = '메이플 플래닛 아이템 비교 · 환산 계산기 | PlanetCompare'
-    document
-      .querySelector('meta[name="description"]')
-      ?.setAttribute(
-        'content',
-        '메이플 플래닛 아이템 비교와 환산 계산을 빠르게 확인하세요. 장비 스탯, 공격력, 보공, 총뎀, 크확, 버프를 반영해 교체 효율을 비교합니다.',
-      )
+    setPageMeta({
+      title: '메이플 플래닛 아이템 비교 · 환산 계산기 | PlanetCompare',
+      description: '메이플 플래닛 아이템 비교와 환산 계산을 빠르게 확인하세요. 장비 스탯, 공격력, 보공, 총뎀, 크확, 버프를 반영해 교체 효율을 비교합니다.',
+      path: '/',
+    })
   }, [])
 
   return (

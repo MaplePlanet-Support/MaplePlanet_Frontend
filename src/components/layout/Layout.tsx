@@ -36,6 +36,18 @@ export default function Layout() {
           >
             소개/가이드
           </NavLink>
+          <NavLink
+            to="/contact"
+            className={({ isActive }) =>
+              `rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-maple text-white shadow-sm shadow-maple/30'
+                  : 'text-muted-foreground hover:bg-slate-100 hover:text-foreground'
+              }`
+            }
+          >
+            문의
+          </NavLink>
         </nav>
       </header>
       <main>
@@ -49,6 +61,10 @@ export default function Layout() {
           </a>
           <span className="mx-2 opacity-40">·</span>
           <Link to="/about" className="hover:underline">소개/가이드</Link>
+          <span className="mx-2 opacity-40">·</span>
+          <Link to="/contact" className="hover:underline">문의</Link>
+          <span className="mx-2 opacity-40">·</span>
+          <Link to="/terms" className="hover:underline">이용 안내</Link>
           <span className="mx-2 opacity-40">·</span>
           <Link to="/privacy" className="hover:underline">개인정보처리방침</Link>
         </p>

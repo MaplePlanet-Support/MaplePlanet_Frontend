@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { setPageMeta } from '@/lib/seo'
 
 const guideSteps = [
   {
@@ -69,13 +70,11 @@ const features = [
 
 export default function About() {
   useEffect(() => {
-    document.title = '소개/가이드 | 메이플 플래닛 아이템 비교 PlanetCompare'
-    document
-      .querySelector('meta[name="description"]')
-      ?.setAttribute(
-        'content',
-        'PlanetCompare 사용 가이드입니다. 메이플 플래닛 아이템 비교, 환산 계산, 버프 설정, AP 재분배 시뮬레이터 사용 방법을 안내합니다.',
-      )
+    setPageMeta({
+      title: '소개/가이드 | 메이플 플래닛 아이템 비교 PlanetCompare',
+      description: 'PlanetCompare 사용 가이드입니다. 메이플 플래닛 아이템 비교, 환산 계산, 버프 설정, AP 재분배 시뮬레이터 사용 방법을 안내합니다.',
+      path: '/about',
+    })
   }, [])
 
   return (

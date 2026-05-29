@@ -1,14 +1,13 @@
 import { useEffect } from 'react'
+import { setPageMeta } from '@/lib/seo'
 
 export default function PrivacyPolicy() {
   useEffect(() => {
-    document.title = '개인정보처리방침 | PlanetCompare'
-    document
-      .querySelector('meta[name="description"]')
-      ?.setAttribute(
-        'content',
-        'PlanetCompare의 개인정보 수집, 프리셋 저장, 이용 통계, Google AdSense 광고 쿠키 사용 안내입니다.',
-      )
+    setPageMeta({
+      title: '개인정보처리방침 | PlanetCompare',
+      description: 'PlanetCompare의 개인정보 수집, 프리셋 저장, 이용 통계, Google AdSense 광고 쿠키 사용 안내입니다.',
+      path: '/privacy',
+    })
   }, [])
 
   return (
