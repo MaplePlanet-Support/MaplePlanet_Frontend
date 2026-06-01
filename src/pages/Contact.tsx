@@ -298,8 +298,10 @@ export default function Contact() {
                   value={presetCode}
                   onChange={e => setPresetCode(e.target.value)}
                   maxLength={30}
-                  type="password"
+                  type="text"
                   autoComplete="off"
+                  name="contact-preset-code"
+                  spellCheck={false}
                   className="h-10 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </label>
@@ -355,8 +357,11 @@ export default function Contact() {
               <input
                 value={adminKey}
                 onChange={e => setAdminKey(e.target.value)}
-                type="password"
+                type="text"
                 placeholder="관리자 키"
+                autoComplete="off"
+                name="contact-admin-key"
+                spellCheck={false}
                 className="h-9 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               />
               <button
@@ -531,8 +536,11 @@ export default function Contact() {
                     <input
                       value={viewPresetCode}
                       onChange={e => setViewPresetCode(e.target.value)}
-                      type="password"
+                      type="text"
                       placeholder="비밀글 저장 코드"
+                      autoComplete="off"
+                      name="contact-view-code"
+                      spellCheck={false}
                       className="h-9 rounded-md border border-border bg-white px-3 text-sm"
                     />
                   </div>

@@ -552,6 +552,9 @@ export default function ItemCompare() {
   const [apTopReq2, setApTopReq2] = useState(0)
   const [apCompareItemReq, setApCompareItemReq] = useState(0)
   const [apCompareIsTop1, setApCompareIsTop1] = useState(false)
+  const [strDaggerEnabled, setStrDaggerEnabled] = useState(false)
+  const [daggerStrStat, setDaggerStrStat] = useState(0)
+  const [daggerStrRequirement, setDaggerStrRequirement] = useState(0)
   const [showApDetails, setShowApDetails] = useState(false)
   const [apResult, setApResult] = useState<DamageCompareResponse | null>(null)
 
@@ -560,6 +563,7 @@ export default function ItemCompare() {
   const atkColLabel = isMage ? '마력' : '공격력'
   const statLabel = JOB_STAT[job]
   const subLabel = JOB_SUB[job]
+  const canUseStrDagger = job === '도적' && (weaponType === 'DAGGER' || (compareSlot === '무기' && compareWeaponType === 'DAGGER'))
   const weaponOptions = ALL_WEAPON_OPTIONS.filter(o => JOB_WEAPONS[job]?.includes(o.value))
   const ammoList = AMMO[weaponType] ?? null
   const ammoAtk = selectedAmmo?.atk ?? 0
@@ -593,6 +597,7 @@ export default function ItemCompare() {
     setWeaponType(JOB_DEFAULT_WEAPON[nextJob])
     setCompareWeaponType(JOB_DEFAULT_WEAPON[nextJob])
     setSelectedAmmo(null)
+    if (nextJob !== '도적') setStrDaggerEnabled(false)
   }
 
   function handleUseOverallChange(checked: boolean) {
@@ -603,7 +608,8 @@ export default function ItemCompare() {
 
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (mode !== 2 || baseStat <= 0 || apTopReq1 <= 0) { setApResult(null); return }
+      const usesStrDagger = canUseStrDagger && strDaggerEnabled && daggerStrRequirement > 0
+      if (mode !== 2 || baseStat <= 0 || (apTopReq1 <= 0 && !usesStrDagger)) { setApResult(null); return }
       const activeSlotsList = withWeaponSlot(getActiveSlots())
       const fSubA = activeSlotsList.reduce((s, k) => s + slots[k].flatSubStat, 0)
       const aStatA = activeSlotsList.reduce((s, k) => s + slots[k].allStatPercent + slots[k].subStatPercent, 0)
@@ -611,16 +617,22 @@ export default function ItemCompare() {
       const aStatWithoutCurrent = aStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent)
       const mwPct = mapleWarriorLevel > 0 ? Math.floor((mapleWarriorLevel + 1) / 2) : 0
       const currentSubStat = effectiveStat(subStat, fSubA, aStatA, mwPct)
-      const topReq1 = Math.min(apTopReq1, currentSubStat)
-      const topReq2 = Math.min(apTopReq2, currentSubStat)
+      const hasDexRequirement = apTopReq1 > 0
+      const topReq1 = hasDexRequirement ? Math.min(apTopReq1, currentSubStat) : 0
+      const topReq2 = hasDexRequirement ? Math.min(apTopReq2, currentSubStat) : 0
       const remainingEquippedReq = apCompareIsTop1 ? topReq2 : topReq1
       const needForCompareItem = requiredBaseStat(apCompareItemReq, fSubWithoutCurrent, aStatWithoutCurrent, mwPct)
       const needForEquippedItems = requiredBaseStat(remainingEquippedReq, fSubWithoutCurrent, aStatWithoutCurrent, mwPct)
-      const needB = Math.max(needForCompareItem, needForEquippedItems)
-      const statShift = subStat - needB
+      const needB = hasDexRequirement ? Math.max(needForCompareItem, needForEquippedItems) : subStat
+      const subStatShift = hasDexRequirement ? subStat - needB : 0
+      const requiredPureStr = usesStrDagger ? requiredBaseStat(daggerStrRequirement, 0, 0, mwPct) : daggerStrStat
+      const strStatShift = usesStrDagger
+        ? daggerStrStat - requiredPureStr
+        : 0
+      const statShift = subStatShift + strStatShift
       const redistributedBaseStat = baseStat + statShift
       const redistributedSubStat = needB
-      if (statShift === 0 || redistributedBaseStat < 0 || redistributedSubStat < 0) { setApResult(null); return }
+      if (statShift === 0 || redistributedBaseStat < 0 || redistributedSubStat < 0 || requiredPureStr < 0) { setApResult(null); return }
       try {
         const isWeapon = compareSlot === '무기'
         const apiWeaponAtk = isWeapon ? 0 : weaponAtk
@@ -641,6 +653,7 @@ export default function ItemCompare() {
     return () => clearTimeout(timer)
   }, [
     apTopReq1, apTopReq2, apCompareItemReq, apCompareIsTop1,
+    strDaggerEnabled, daggerStrStat, daggerStrRequirement, canUseStrDagger,
     mode, baseStat, subStat, job, weaponType, compareWeaponType, weaponAtk,
     blessingLevel, empressBlessingLevel, mapleWarriorLevel, meditationLevel, rageLevel,
     sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk, usesAmmo, critRate, critDmgPP, effectiveSkillCoeff,
@@ -760,9 +773,12 @@ export default function ItemCompare() {
         const res = await statConv({
           baseStat, subStat, weaponType, weaponAtk,
           mapleWarriorLevel, blessingLevel, empressBlessingLevel,
-          meditationLevel, rageLevel, babyDragonFood,
+          meditationLevel, rageLevel, sharpEyesLevel, decentSharpEyes, babyDragonFood,
           hontaleVictory,
           ammoAtk: usesAmmo ? ammoAtk : 0,
+          critRate,
+          critDmgPP,
+          skillCoeff: effectiveSkillCoeff,
           equippedItems,
         })
         setConvResult(res)
@@ -782,6 +798,7 @@ export default function ItemCompare() {
               : res.allStatPct1ToMainStat,
             atkPct: res.atkPct1ToMainStat,
             flatAtk: res.flatAtk1ToMainStat,
+            critRate: res.critRate1ToMainStat,
             bossDmgPct: res.bossDmgPct1ToMainStat,
             totalDmgPct: res.totalDmgPct1ToMainStat,
           }
@@ -814,6 +831,7 @@ export default function ItemCompare() {
           { key: 'allStatPct', item: { ...emptyFull(), allStatPercent: 1 }, redistributedAp },
           { key: 'atkPct', item: { ...emptyFull(), atkPercent: 1 } },
           { key: 'flatAtk', item: { ...emptyFull(), flatAtk: 1 } },
+          { key: 'critRate', item: { ...emptyFull(), critRateBonus: 1 } },
           { key: 'bossDmgPct', item: { ...emptyFull(), bossDmgPercent: 1 } },
           { key: 'totalDmgPct', item: { ...emptyFull(), totalDmgPercent: 1 } },
         ]
@@ -892,7 +910,8 @@ export default function ItemCompare() {
         job, mode, baseStat, subStat, weaponType, compareWeaponType, weaponAtk, atkPercent: 0,
         blessingLevel, empressBlessingLevel,
         mapleWarriorLevel, meditationLevel, rageLevel,
-        sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory, ammoAtk,
+        sharpEyesLevel, decentSharpEyes, babyDragonFood, hontaleVictory,
+        strDaggerEnabled, daggerStrStat, daggerStrRequirement, ammoAtk,
         ammoName: selectedAmmo?.name,
         critRate, critDmgPP, skillCoeff: effectiveSkillCoeff, amplificationLevel,
         useOverall, slots, compareSlot, compareItem,
@@ -947,6 +966,9 @@ export default function ItemCompare() {
       setDecentSharpEyes(loadedSharpLevel > 0 ? false : c.decentSharpEyes ?? false)
       setBabyDragonFood(loadedRageLevel > 0 ? false : c.babyDragonFood ?? false)
       setHontaleVictory(loadedHontaleVictory)
+      setStrDaggerEnabled(c.strDaggerEnabled ?? false)
+      setDaggerStrStat(numberOrZero(c.daggerStrStat))
+      setDaggerStrRequirement(numberOrZero(c.daggerStrRequirement))
       setSelectedAmmo((AMMO[loadedWeaponType] ?? []).find(item => item.name === c.ammoName)
         ?? (AMMO[loadedWeaponType] ?? []).find(item => item.atk === loadedAmmoAtk)
         ?? null)
@@ -1039,41 +1061,48 @@ export default function ItemCompare() {
   const apAllStatWithoutCurrent = apAllStatA - (slots[compareSlot].allStatPercent + slots[compareSlot].subStatPercent)
   const mwPct = mapleWarriorLevel > 0 ? Math.floor((mapleWarriorLevel + 1) / 2) : 0
   const apCurrentSubStat = effectiveStat(subStat, apFlatSubA, apAllStatA, mwPct)
-  const apEffectiveTopReq1 = Math.min(apTopReq1, apCurrentSubStat)
-  const apEffectiveTopReq2 = Math.min(apTopReq2, apCurrentSubStat)
+  const apUsesStrDagger = canUseStrDagger && strDaggerEnabled && daggerStrRequirement > 0
+  const apHasRequirement = apTopReq1 > 0 || apUsesStrDagger
+  const apHasDexRequirement = apTopReq1 > 0
+  const apEffectiveTopReq1 = apHasDexRequirement ? Math.min(apTopReq1, apCurrentSubStat) : 0
+  const apEffectiveTopReq2 = apHasDexRequirement ? Math.min(apTopReq2, apCurrentSubStat) : 0
   const apRemainingEquippedReq = apCompareIsTop1 ? apEffectiveTopReq2 : apEffectiveTopReq1
   const apNeedA = apEffectiveTopReq1 > 0
     ? apCompareIsTop1
       ? requiredBaseStat(apEffectiveTopReq1, apFlatSubWithoutCurrent, apAllStatWithoutCurrent, mwPct)
       : requiredBaseStat(apEffectiveTopReq1, apFlatSubA, apAllStatA, mwPct)
     : 0
-  const apNeedForCompareItem = apEffectiveTopReq1 > 0
+  const apNeedForCompareItem = apHasDexRequirement
     ? requiredBaseStat(apCompareItemReq, apFlatSubWithoutCurrent, apAllStatWithoutCurrent, mwPct)
     : 0
-  const apNeedForEquippedItems = apEffectiveTopReq1 > 0
+  const apNeedForEquippedItems = apHasDexRequirement
     ? requiredBaseStat(apRemainingEquippedReq, apFlatSubWithoutCurrent, apAllStatWithoutCurrent, mwPct)
     : 0
-  const apNeedB = Math.max(apNeedForCompareItem, apNeedForEquippedItems)
+  const apNeedB = apHasDexRequirement ? Math.max(apNeedForCompareItem, apNeedForEquippedItems) : subStat
   const apEffReq = Math.max(apRemainingEquippedReq, apCompareItemReq)
-  const apStatShift = apEffectiveTopReq1 > 0 ? subStat - apNeedB : 0
+  const apSubStatShift = apHasDexRequirement ? subStat - apNeedB : 0
+  const apCurrentDaggerStr = effectiveStat(daggerStrStat, 0, 0, mwPct)
+  const apNeedDaggerStr = apUsesStrDagger ? requiredBaseStat(daggerStrRequirement, 0, 0, mwPct) : daggerStrStat
+  const apDaggerStrShift = apUsesStrDagger ? daggerStrStat - apNeedDaggerStr : 0
+  const apRedistributedDaggerStr = apUsesStrDagger ? apNeedDaggerStr : daggerStrStat
+  const apStatShift = apSubStatShift + apDaggerStrShift
   const apShiftAbs = Math.abs(apStatShift)
   const apRedistributedBaseStat = baseStat + apStatShift
   const apRedistributedSubStat = apNeedB
-  const canShowApRedistribution = apEffectiveTopReq1 > 0 && apStatShift !== 0 && apRedistributedBaseStat >= 0 && apRedistributedSubStat >= 0
-  const apHasRequirement = apTopReq1 > 0
+  const canShowApRedistribution = apHasRequirement && apStatShift !== 0 && apRedistributedBaseStat >= 0 && apRedistributedSubStat >= 0 && apRedistributedDaggerStr >= 0
   const apSummaryTone = apStatShift > 0 ? 'text-win' : apStatShift < 0 ? 'text-lose' : 'text-muted-foreground'
   const apSummaryText = !apHasRequirement
     ? `${subLabel} 요구치를 입력하면 AP 전후 변화가 계산됩니다.`
     : apStatShift > 0
-      ? `순수 ${subLabel} ${apShiftAbs} 절감 가능`
+      ? `순수 AP ${apShiftAbs}을 ${statLabel}으로 전환 가능`
       : apStatShift < 0
-        ? `순수 ${subLabel} ${apShiftAbs} 추가 필요`
-        : `재분배가 필요한 순수 ${subLabel} 변화가 없습니다.`
+        ? `순수 ${statLabel} ${apShiftAbs}을 요구 스탯에 추가 배분 필요`
+        : `재분배가 필요한 순수 AP 변화가 없습니다.`
   const apRedistributionText = apStatShift > 0
-    ? `순수 ${statLabel} +${apShiftAbs} / 순수 ${subLabel} -${apShiftAbs}`
+    ? `순수 ${statLabel} +${apShiftAbs} / 순수 ${subLabel} ${-apSubStatShift >= 0 ? '+' : ''}${-apSubStatShift}${apUsesStrDagger ? ` / 순수 STR ${-apDaggerStrShift >= 0 ? '+' : ''}${-apDaggerStrShift}` : ''}`
     : apStatShift < 0
-      ? `순수 ${statLabel} -${apShiftAbs} / 순수 ${subLabel} +${apShiftAbs}`
-      : `순수 ${statLabel}, ${subLabel} 변화 없음`
+      ? `순수 ${statLabel} -${apShiftAbs} / 순수 ${subLabel} ${-apSubStatShift >= 0 ? '+' : ''}${-apSubStatShift}${apUsesStrDagger ? ` / 순수 STR ${-apDaggerStrShift >= 0 ? '+' : ''}${-apDaggerStrShift}` : ''}`
+      : `순수 ${statLabel}, ${subLabel}${apUsesStrDagger ? ', STR' : ''} 변화 없음`
   const isPresetBusy = presetAction !== null
   const presetMessageClass = presetMsg?.type === 'ok'
     ? 'border-win/20 bg-win-bg text-win'
@@ -1676,6 +1705,7 @@ export default function ItemCompare() {
               { key: 'allStatPct', label: '올스탯 1%', value: convResult.allStatPct1ToMainStat },
               { key: 'atkPct', label: `${atkLabel} 1%`, value: convResult.atkPct1ToMainStat },
               { key: 'flatAtk', label: `${atkLabel} 1`, value: convResult.flatAtk1ToMainStat },
+              { key: 'critRate', label: '크확 1%', value: convResult.critRate1ToMainStat },
               { key: 'bossDmgPct', label: '보공 1%', value: convResult.bossDmgPct1ToMainStat },
               { key: 'totalDmgPct', label: '총뎀 1%', value: convResult.totalDmgPct1ToMainStat },
             ]
@@ -1820,11 +1850,12 @@ export default function ItemCompare() {
                 className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
               />
               <input
-                type="password" placeholder="저장 코드" value={password}
+                type="text" placeholder="저장 코드" value={password}
                 onChange={e => setPassword(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') void handleLoad() }}
-                autoComplete="new-password"
-                name="preset-secret"
+                autoComplete="off"
+                name="preset-code"
+                spellCheck={false}
                 disabled={isPresetBusy}
                 className="h-7 flex-1 min-w-0 rounded border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
               />
@@ -1981,48 +2012,101 @@ export default function ItemCompare() {
           현재 비교 슬롯 장비가 1위 요구치 장비라면 체크해야 교체 후 1위 요구치가 빠집니다.
         </div>
 
+        {canUseStrDagger && (
+          <div className="rounded-md border border-border bg-muted/10 px-3 py-3">
+            <label className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <input
+                type="checkbox"
+                checked={strDaggerEnabled}
+                onChange={e => setStrDaggerEnabled(e.target.checked)}
+              />
+              힘단도 STR 요구치 포함
+            </label>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              STR은 단검 착용 조건에만 사용하고 스공 계산에는 넣지 않습니다. 현재 순수 STR과 힘단도 착용 요구 STR을 입력하면 메용을 반영해 필요한 순수 STR을 역산합니다.
+            </p>
+            {strDaggerEnabled && (
+              <div className="mt-3 flex flex-wrap gap-3">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs">현재 순수 STR</Label>
+                  <NumInput value={daggerStrStat} onChange={setDaggerStrStat} width={88} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs">힘단도 착용 요구 STR</Label>
+                  <NumInput value={daggerStrRequirement} onChange={setDaggerStrRequirement} width={88} />
+                </div>
+                {daggerStrRequirement > 0 && (
+                  <div className="flex items-end pb-1 text-xs text-muted-foreground">
+                    최종 STR {apCurrentDaggerStr} / 필요 순수 STR {apNeedDaggerStr} · 순수 STR {daggerStrStat} → {apRedistributedDaggerStr}
+                    {apDaggerStrShift > 0 && <span className="ml-2 text-win">남는 STR {apDaggerStrShift} AP를 {statLabel}으로 전환</span>}
+                    {apDaggerStrShift < 0 && <span className="ml-2 text-lose">STR {-apDaggerStrShift} AP 추가 필요</span>}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 계산 결과 */}
-        {apTopReq1 > 0 && (
+        {apHasRequirement && (
           <div className="rounded-lg bg-muted/30 px-4 py-3 flex flex-col gap-2 text-sm">
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
               <span className="text-muted-foreground">
                 현재 최종 {subLabel}: <strong className="text-foreground">{apCurrentSubStat}</strong>
               </span>
-              <span className="text-muted-foreground">
-                교체 전 기준 요구치: <strong className="text-foreground">{apEffectiveTopReq1} {subLabel}</strong>
-                {' '}→ 필요 순수 {subLabel}: <strong className="text-foreground">{apNeedA}</strong>
-              </span>
-              <span className="text-muted-foreground">
-                교체 후 기준 요구치: <strong className="text-foreground">{apEffReq} {subLabel}</strong>
-                {' '}→ 필요 순수 {subLabel}: <strong className="text-foreground">{apNeedB}</strong>
-              </span>
+              {apHasDexRequirement && (
+                <>
+                  <span className="text-muted-foreground">
+                    교체 전 기준 요구치: <strong className="text-foreground">{apEffectiveTopReq1} {subLabel}</strong>
+                    {' '}→ 필요 순수 {subLabel}: <strong className="text-foreground">{apNeedA}</strong>
+                  </span>
+                  <span className="text-muted-foreground">
+                    교체 후 기준 요구치: <strong className="text-foreground">{apEffReq} {subLabel}</strong>
+                    {' '}→ 필요 순수 {subLabel}: <strong className="text-foreground">{apNeedB}</strong>
+                  </span>
+                </>
+              )}
+              {apUsesStrDagger && (
+                <span className="text-muted-foreground">
+                  힘단도 요구 STR: <strong className="text-foreground">{daggerStrRequirement}</strong>
+                  {' '}→ 필요 순수 STR: <strong className="text-foreground">{apNeedDaggerStr}</strong>
+                </span>
+              )}
             </div>
-            {(apTopReq1 > apCurrentSubStat || apTopReq2 > apCurrentSubStat) && (
+            {apHasDexRequirement && (apTopReq1 > apCurrentSubStat || apTopReq2 > apCurrentSubStat) && (
               <div className="text-xs text-lose">
                 현재 최종 {subLabel}를 넘는 기존 장비 요구치는 계산에서 {apCurrentSubStat}로 보정됩니다.
               </div>
             )}
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
-              <span>
-                비교 아이템 장착 조건: <strong className="text-foreground">{apNeedForCompareItem}</strong>
-                <span className="ml-1">(비교 아이템 스탯 제외)</span>
-              </span>
-              <span>
-                장착 후 기존 장비 조건: <strong className="text-foreground">{apNeedForEquippedItems}</strong>
-                <span className="ml-1">(비교 아이템 스탯 포함)</span>
-              </span>
-            </div>
+            {apHasDexRequirement && (
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+                <span>
+                  비교 아이템 장착 조건: <strong className="text-foreground">{apNeedForCompareItem}</strong>
+                  <span className="ml-1">(비교 아이템 스탯 제외)</span>
+                </span>
+                <span>
+                  장착 후 기존 장비 조건: <strong className="text-foreground">{apNeedForEquippedItems}</strong>
+                  <span className="ml-1">(비교 아이템 스탯 포함)</span>
+                </span>
+              </div>
+            )}
             {apStatShift > 0 ? (
               <div className="text-sm font-semibold text-win">
-                순수 {subLabel} {apShiftAbs} 절감 가능 → 순수 {statLabel} +{apShiftAbs} 전환
+                순수 AP {apShiftAbs} 절감 가능 → 순수 {statLabel} +{apShiftAbs} 전환
               </div>
             ) : apStatShift < 0 ? (
               <div className="text-sm font-semibold text-lose">
-                순수 {subLabel} {apShiftAbs} 추가 필요 → 순수 {statLabel} -{apShiftAbs} 전환
+                요구 스탯에 순수 AP {apShiftAbs} 추가 필요 → 순수 {statLabel} -{apShiftAbs} 전환
               </div>
             ) : (
               <div className="text-xs text-muted-foreground">
-                재분배가 필요한 순수 {subLabel} 변화가 없습니다.
+                재분배가 필요한 순수 AP 변화가 없습니다.
+              </div>
+            )}
+            {(apSubStatShift !== 0 || apDaggerStrShift !== 0) && (
+              <div className="text-xs text-muted-foreground">
+                세부 변화: 순수 {subLabel} {subStat} → {apRedistributedSubStat}
+                {apUsesStrDagger && <> / 순수 STR {daggerStrStat} → {apRedistributedDaggerStr}</>}
               </div>
             )}
             {apStatShift < 0 && apRedistributedBaseStat < 0 && (
@@ -2040,6 +2124,7 @@ export default function ItemCompare() {
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">재분배 후 데미지 재비교</span>
               <span className="text-xs text-muted-foreground">
                 순수 {statLabel} {baseStat} → {apRedistributedBaseStat} / 순수 {subLabel} {subStat} → {apRedistributedSubStat}
+                {apUsesStrDagger && <> / 순수 STR {daggerStrStat} → {apRedistributedDaggerStr}</>}
               </span>
             </div>
             {apResult === null ? (
@@ -2089,7 +2174,7 @@ export default function ItemCompare() {
                           {
                             step: '1',
                             title: 'AP 적용 전',
-                            note: `순수 ${statLabel} ${baseStat} / 순수 ${subLabel} ${subStat}`,
+                            note: `순수 ${statLabel} ${baseStat} / 순수 ${subLabel} ${subStat}${apUsesStrDagger ? ` / 순수 STR ${daggerStrStat}` : ''}`,
                             stat: (row: typeof rows[number]) => row.beforeStat,
                             power: (row: typeof rows[number]) => row.beforePower,
                             expected: (row: typeof rows[number]) => row.beforeExpected,
@@ -2097,7 +2182,7 @@ export default function ItemCompare() {
                           {
                             step: '2',
                             title: 'AP 적용 후',
-                            note: `순수 ${statLabel} ${apRedistributedBaseStat} / 순수 ${subLabel} ${apRedistributedSubStat}`,
+                            note: `순수 ${statLabel} ${apRedistributedBaseStat} / 순수 ${subLabel} ${apRedistributedSubStat}${apUsesStrDagger ? ` / 순수 STR ${apRedistributedDaggerStr}` : ''}`,
                             stat: (row: typeof rows[number]) => row.afterStat,
                             power: (row: typeof rows[number]) => row.afterPower,
                             expected: (row: typeof rows[number]) => row.afterExpected,
@@ -2140,7 +2225,8 @@ export default function ItemCompare() {
                             <span className="text-sm font-semibold text-foreground">AP 변화 결과</span>
                           </div>
                           <span className={`text-sm font-semibold ${apStatShift > 0 ? 'text-win' : 'text-lose'}`}>
-                            순수 {statLabel} {apStatShift >= 0 ? '+' : ''}{apStatShift} / 순수 {subLabel} {(-apStatShift) >= 0 ? '+' : ''}{-apStatShift}
+                            순수 {statLabel} {apStatShift >= 0 ? '+' : ''}{apStatShift} / 순수 {subLabel} {(-apSubStatShift) >= 0 ? '+' : ''}{-apSubStatShift}
+                            {apUsesStrDagger && <> / 순수 STR {(-apDaggerStrShift) >= 0 ? '+' : ''}{-apDaggerStrShift}</>}
                           </span>
                         </div>
                           <div className="overflow-hidden rounded-md border border-border bg-white/70">

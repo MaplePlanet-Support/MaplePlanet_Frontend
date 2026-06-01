@@ -23,6 +23,9 @@ export type PresetConfig = {
   decentSharpEyes: boolean
   babyDragonFood: boolean
   hontaleVictory?: boolean
+  strDaggerEnabled?: boolean
+  daggerStrStat?: number
+  daggerStrRequirement?: number
   ammoAtk?: number
   ammoName?: string
   useOverall: boolean

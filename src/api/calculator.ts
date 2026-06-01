@@ -159,9 +159,14 @@ export type StatConvRequest = {
   empressBlessingLevel: number
   meditationLevel: number
   rageLevel: number
+  sharpEyesLevel: number
+  decentSharpEyes: boolean
   babyDragonFood: boolean
   hontaleVictory: boolean
   ammoAtk: number
+  critRate: number
+  critDmgPP: number
+  skillCoeff: number
   equippedItems: ItemStatFull[]
 }
 
@@ -170,6 +175,7 @@ export type StatConvResponse = {
   allStatPct1ToMainStat: number
   atkPct1ToMainStat: number
   flatAtk1ToMainStat: number
+  critRate1ToMainStat: number
   bossDmgPct1ToMainStat: number
   totalDmgPct1ToMainStat: number
   currentMainStat: number
