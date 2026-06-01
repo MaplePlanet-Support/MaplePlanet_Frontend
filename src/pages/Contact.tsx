@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
+  answerContactPost,
   createContactPost,
   downloadContactAttachment,
   downloadPublicContactAttachment,
@@ -59,6 +60,8 @@ export default function Contact() {
   const [detail, setDetail] = useState<ContactPostDetail | null>(null)
   const [adminLoading, setAdminLoading] = useState(false)
   const [adminMessage, setAdminMessage] = useState<Message | null>(null)
+  const [answerContent, setAnswerContent] = useState('')
+  const [answerSaving, setAnswerSaving] = useState(false)
   const [publicPosts, setPublicPosts] = useState<ContactPostSummary[]>([])
   const [publicDetail, setPublicDetail] = useState<ContactPostDetail | null>(null)
   const [viewNickname, setViewNickname] = useState('')
@@ -168,11 +171,34 @@ export default function Contact() {
     setAdminLoading(true)
     setAdminMessage(null)
     try {
-      setDetail(await getContactPost(Number(id), adminKey))
+      const next = await getContactPost(Number(id), adminKey)
+      setDetail(next)
+      setAnswerContent(next.answerContent ?? '')
     } catch (error) {
       setAdminMessage({ type: 'err', text: errorMessage(error, '문의 상세를 불러오지 못했습니다.') })
     } finally {
       setAdminLoading(false)
+    }
+  }
+
+  async function saveAnswer() {
+    if (!detail) return
+    setAnswerSaving(true)
+    setAdminMessage(null)
+    try {
+      const next = await answerContactPost(detail.id, adminKey, answerContent)
+      setDetail(next)
+      setAnswerContent(next.answerContent ?? '')
+      setPosts(posts.map(post => post.id === next.id ? { ...post, answered: true } : post))
+      setPublicPosts(publicPosts.map(post => post.id === next.id ? { ...post, answered: true } : post))
+      if (publicDetail?.id === next.id) {
+        setPublicDetail({ ...publicDetail, answerContent: next.answerContent, answeredAt: next.answeredAt, answered: true })
+      }
+      setAdminMessage({ type: 'ok', text: '답변을 저장했습니다.' })
+    } catch (error) {
+      setAdminMessage({ type: 'err', text: errorMessage(error, '답변 저장에 실패했습니다.') })
+    } finally {
+      setAnswerSaving(false)
     }
   }
 
@@ -351,7 +377,7 @@ export default function Contact() {
               >
                 {posts.map(post => (
                   <option key={post.id} value={post.id}>
-                    #{post.id} {post.secret ? '[비밀] ' : ''}{post.title} · {post.nickname}
+                    #{post.id} {post.secret ? '[비밀] ' : ''}{post.answered ? '[답변] ' : ''}{post.title} · {post.nickname}
                   </option>
                 ))}
               </select>
@@ -384,6 +410,30 @@ export default function Contact() {
                   </div>
                 </div>
                 <p className="whitespace-pre-wrap rounded-md bg-muted/30 p-3 text-sm leading-6">{detail.content}</p>
+
+                <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/10 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-semibold text-muted-foreground">
+                      관리자 답변 {detail.answeredAt && <span className="font-normal">· {formatDate(detail.answeredAt)}</span>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void saveAnswer()}
+                      disabled={answerSaving}
+                      className="h-8 rounded-md bg-maple px-3 text-xs font-semibold text-white disabled:opacity-60"
+                    >
+                      {answerSaving ? '저장 중...' : '답변 저장'}
+                    </button>
+                  </div>
+                  <textarea
+                    value={answerContent}
+                    onChange={e => setAnswerContent(e.target.value)}
+                    maxLength={5000}
+                    rows={6}
+                    placeholder="유저에게 보여줄 답변을 입력하세요."
+                    className="resize-y rounded-md border border-border bg-white px-3 py-2 text-sm leading-6 focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
 
                 {detail.attachments.length > 0 && (
                   <div className="flex flex-col gap-2">
@@ -458,6 +508,7 @@ export default function Contact() {
                       <span>#{post.id}</span>
                       {post.secret && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-muted-foreground">비밀</span>}
                       {post.presetAttached && <span className="rounded bg-maple-bg px-1.5 py-0.5 text-[10px] text-maple">프리셋</span>}
+                      {post.answered && <span className="rounded bg-win-bg px-1.5 py-0.5 text-[10px] text-win">답변</span>}
                     </span>
                     <span className="line-clamp-1 text-sm text-foreground">{post.title}</span>
                     <span className="text-xs text-muted-foreground">{post.nickname} · {formatDate(post.createdAt)}</span>
@@ -496,6 +547,14 @@ export default function Contact() {
                     </div>
                   </div>
                   <p className="whitespace-pre-wrap rounded-md bg-white p-3 text-sm leading-6">{publicDetail.content}</p>
+                  {publicDetail.answerContent && (
+                    <div className="rounded-md border border-win/20 bg-win-bg/50 p-3">
+                      <div className="mb-2 text-xs font-semibold text-win">
+                        관리자 답변 {publicDetail.answeredAt && <span className="font-normal text-muted-foreground">· {formatDate(publicDetail.answeredAt)}</span>}
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">{publicDetail.answerContent}</p>
+                    </div>
+                  )}
                   {publicDetail.attachments.length > 0 && (
                     <div className="flex flex-col gap-2">
                       <div className="text-xs font-semibold text-muted-foreground">첨부</div>

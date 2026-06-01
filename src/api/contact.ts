@@ -14,6 +14,7 @@ export type ContactPostSummary = {
   secret: boolean
   presetAttached: boolean
   readable: boolean
+  answered: boolean
   createdAt: string
 }
 
@@ -29,6 +30,8 @@ export type ContactPostDetail = ContactPostSummary & {
   content: string
   presetNickname?: string
   presetConfigJson?: string
+  answerContent?: string
+  answeredAt?: string
   attachments: ContactAttachment[]
 }
 
@@ -73,6 +76,18 @@ export async function listPublicContactPosts() {
 export async function getContactPost(id: number, adminKey: string) {
   const res = await fetch(`${BASE_URL}/v1/contact/admin/posts/${id}`, {
     headers: { 'X-Analytics-Key': adminKey },
+  })
+  return parseResponse<ContactPostDetail>(res)
+}
+
+export async function answerContactPost(id: number, adminKey: string, answerContent: string) {
+  const res = await fetch(`${BASE_URL}/v1/contact/admin/posts/${id}/answer`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Analytics-Key': adminKey,
+    },
+    body: JSON.stringify({ answerContent }),
   })
   return parseResponse<ContactPostDetail>(res)
 }
