@@ -673,6 +673,17 @@ export default function ItemCompare() {
     if (checked) setRageLevel(0)
   }
 
+  function setMeditationLevelSafe(value: number) {
+    const next = levelValue(value, 20)
+    setMeditationLevel(next)
+    if (next > 0) setHontaleVictory(false)
+  }
+
+  function setHontaleVictorySafe(checked: boolean) {
+    setHontaleVictory(checked)
+    if (checked) setMeditationLevel(0)
+  }
+
   const calculate = useCallback(async () => {
     if (baseStat <= 0) { setResult(null); return }
     const activeSlots = getActiveSlots()
@@ -927,14 +938,15 @@ export default function ItemCompare() {
       setWeaponType(loadedWeaponType); setCompareWeaponType(loadedCompareWeaponType); setWeaponAtk(numberOrZero(c.weaponAtk))
       setBlessingLevel(numberOrZero(c.blessingLevel)); setEmPressBlessingLevel(numberOrZero(c.empressBlessingLevel))
       setMapleWarriorLevel(numberOrZero(c.mapleWarriorLevel))
-      setMeditationLevel(numberOrZero(c.meditationLevel))
+      const loadedHontaleVictory = c.hontaleVictory ?? false
+      setMeditationLevel(loadedHontaleVictory ? 0 : numberOrZero(c.meditationLevel))
       const loadedRageLevel = numberOrZero(c.rageLevel)
       const loadedSharpLevel = numberOrZero(c.sharpEyesLevel)
       setRageLevel(loadedRageLevel)
       setSharpEyesLevel(loadedSharpLevel)
       setDecentSharpEyes(loadedSharpLevel > 0 ? false : c.decentSharpEyes ?? false)
       setBabyDragonFood(loadedRageLevel > 0 ? false : c.babyDragonFood ?? false)
-      setHontaleVictory(c.hontaleVictory ?? false)
+      setHontaleVictory(loadedHontaleVictory)
       setSelectedAmmo((AMMO[loadedWeaponType] ?? []).find(item => item.name === c.ammoName)
         ?? (AMMO[loadedWeaponType] ?? []).find(item => item.atk === loadedAmmoAtk)
         ?? null)
@@ -1762,9 +1774,9 @@ export default function ItemCompare() {
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-xs"><BuffLabel icon="메디테이션.png">메디테이션</BuffLabel></Label>
-                    <button type="button" onClick={() => setMeditationLevel(20)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
+                    <button type="button" onClick={() => setMeditationLevelSafe(20)} className="text-[10px] font-medium text-maple hover:underline">만렙</button>
                   </div>
-                  <NumInput value={meditationLevel} onChange={v => setMeditationLevel(levelValue(v, 20))} width={72} />
+                  <NumInput value={meditationLevel} onChange={setMeditationLevelSafe} width={72} />
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between gap-2">
@@ -1789,7 +1801,7 @@ export default function ItemCompare() {
                   <BuffLabel icon="아기용의 이유식.png">아기용의 이유식</BuffLabel>
                 </label>
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-                  <input type="checkbox" checked={hontaleVictory} onChange={e => setHontaleVictory(e.target.checked)} />
+                  <input type="checkbox" checked={hontaleVictory} onChange={e => setHontaleVictorySafe(e.target.checked)} />
                   <BuffLabel icon="혼테일 원정대의 승리.png">혼테일</BuffLabel>
                 </label>
               </div>
@@ -1934,28 +1946,39 @@ export default function ItemCompare() {
 
         {/* 요구치 입력 */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <p className="text-xs text-muted-foreground leading-relaxed lg:max-w-3xl">
-            현재 장착 중인 아이템들의 <strong>{subLabel} 요구치</strong>를 높은 순서대로 입력하세요.
-            비교 슬롯의 아이템이 1위라면 체크하세요 — 해당 아이템을 교체하면 1위 요구치가 사라지므로, 2위와 비교 아이템 요구치 중 더 높은 값이 기준이 됩니다.
-          </p>
+          <div className="flex flex-col gap-2 text-xs leading-relaxed text-muted-foreground lg:max-w-3xl">
+            <p>
+              현재 장착 중인 장비의 <strong>착용 요구 {subLabel}</strong>를 높은 순서대로 입력하세요.
+              장비 옵션이나 현재 최종 {subLabel}가 아니라, 아이템 설명에 적힌 착용 조건 값입니다.
+            </p>
+            <p>
+              예: 요구 {subLabel}가 160, 140, 120인 장비를 쓰고 있으면 1위는 160, 2위는 140만 입력합니다.
+              3위는 2위보다 낮아서 기준이 되지 않습니다.
+            </p>
+          </div>
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex flex-col gap-1">
-              <Label className="text-xs">1위 요구 {subLabel}</Label>
+              <Label className="text-xs">현재 장비 1위 착용 요구 {subLabel}</Label>
               <NumInput value={apTopReq1} onChange={setApTopReq1} width={88} />
             </div>
             <div className="flex flex-col gap-1">
-              <Label className="text-xs">2위 요구 {subLabel}</Label>
+              <Label className="text-xs">현재 장비 2위 착용 요구 {subLabel}</Label>
               <NumInput value={apTopReq2} onChange={setApTopReq2} width={88} />
             </div>
             <div className="flex flex-col gap-1">
-              <Label className="text-xs">비교 아이템 요구 {subLabel}</Label>
+              <Label className="text-xs">새 비교 장비 착용 요구 {subLabel}</Label>
               <NumInput value={apCompareItemReq} onChange={setApCompareItemReq} width={88} />
             </div>
             <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none pb-1">
               <input type="checkbox" checked={apCompareIsTop1} onChange={e => setApCompareIsTop1(e.target.checked)} />
-              <span className="text-muted-foreground">비교 슬롯이 1위 아이템</span>
+              <span className="text-muted-foreground">현재 선택한 비교 슬롯 장비가 1위 요구치 장비입니다</span>
             </label>
           </div>
+        </div>
+        <div className="rounded-md border border-border bg-muted/20 px-3 py-2 text-xs leading-5 text-muted-foreground">
+          <strong className="text-foreground">입력 기준:</strong>
+          {' '}현재 장비 1위/2위는 교체 전 착용 중인 장비 기준이고, 새 비교 장비 착용 요구치는 교체하려는 장비 기준입니다.
+          현재 비교 슬롯 장비가 1위 요구치 장비라면 체크해야 교체 후 1위 요구치가 빠집니다.
         </div>
 
         {/* 계산 결과 */}
