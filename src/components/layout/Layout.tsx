@@ -37,6 +37,18 @@ export default function Layout() {
             소개/가이드
           </NavLink>
           <NavLink
+            to="/formulas"
+            className={({ isActive }) =>
+              `rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-maple text-white shadow-sm shadow-maple/30'
+                  : 'text-muted-foreground hover:bg-slate-100 hover:text-foreground'
+              }`
+            }
+          >
+            계산 방식
+          </NavLink>
+          <NavLink
             to="/contact"
             className={({ isActive }) =>
               `rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all ${
@@ -47,6 +59,18 @@ export default function Layout() {
             }
           >
             문의
+          </NavLink>
+          <NavLink
+            to="/donate"
+            className={({ isActive }) =>
+              `rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-maple text-white shadow-sm shadow-maple/30'
+                  : 'text-muted-foreground hover:bg-slate-100 hover:text-foreground'
+              }`
+            }
+          >
+            후원
           </NavLink>
         </nav>
       </header>
@@ -62,7 +86,11 @@ export default function Layout() {
           <span className="mx-2 opacity-40">·</span>
           <Link to="/about" className="hover:underline">소개/가이드</Link>
           <span className="mx-2 opacity-40">·</span>
+          <Link to="/formulas" className="hover:underline">계산 방식</Link>
+          <span className="mx-2 opacity-40">·</span>
           <Link to="/contact" className="hover:underline">문의</Link>
+          <span className="mx-2 opacity-40">·</span>
+          <Link to="/donate" className="hover:underline">후원</Link>
           <span className="mx-2 opacity-40">·</span>
           <Link to="/terms" className="hover:underline">이용 안내</Link>
           <span className="mx-2 opacity-40">·</span>

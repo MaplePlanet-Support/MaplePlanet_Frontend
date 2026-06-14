@@ -466,39 +466,56 @@ function ExpectedDmgBlock({
 function SeoContent() {
   return (
     <section className="px-4 pb-10">
-      <div className="mx-auto flex max-w-5xl flex-col gap-5 rounded-xl border border-black/8 bg-white px-5 py-6 shadow-sm sm:px-7">
+      <div className="mx-auto flex max-w-5xl flex-col gap-6 rounded-xl border border-black/8 bg-white px-6 py-8 shadow-sm sm:px-8">
         <div>
-          <h2 className="mb-2 text-xl font-bold text-foreground">메이플 플래닛 아이템 비교와 환산 계산</h2>
+          <h2 className="mb-3 text-xl font-bold text-foreground">메이플 플래닛 아이템 비교와 환산 계산 원리</h2>
           <p className="text-sm leading-7 text-muted-foreground">
-            PlanetCompare는 메이플 플래닛 아이템을 교체하기 전에 실제 효율을 확인하기 위한 계산기입니다.
-            현재 장비와 비교 아이템의 스탯을 입력하면 주스탯 변화, 스공 변화, 실제 데미지 기대값, 보스 기준 데미지를 함께 비교할 수 있습니다.
+            PlanetCompare는 메이플 플래닛 환경에서 아이템 장비를 교체할 때 캐릭터의 실질 스펙 변화를 비교하고 예측하는 종합 시뮬레이션 계산기입니다.
+            단순히 단일 스탯의 높고 낮음을 떠나, 캐릭터의 순수 스탯(AP), 버프 효과, 무기 종류, 그리고 2차 스탯 옵션(크확, 총뎀, 보공)이 맞물려 작용하는 복합적인 데미지 모델을 분석합니다.
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <article className="rounded-lg border border-border bg-muted/20 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-foreground">메이플 플래닛 환산</h3>
+        <div className="grid gap-6 md:grid-cols-3">
+          <article className="rounded-lg border border-border bg-slate-50/50 p-5">
+            <h3 className="mb-2 text-sm font-semibold text-foreground">1. 종합 스탯 보정 및 연산 흐름</h3>
             <p className="text-xs leading-6 text-muted-foreground">
-              공격력 1, 보공 1%, 총뎀 1%, 올스탯 옵션이 현재 캐릭터 기준으로 주스탯 몇에 가까운지 확인합니다.
+              기본적인 스탯 계산은 장비의 기본 주스탯에 올스탯 수치가 단순 합산된 후, 주스탯%와 올스탯%의 합만큼 비율 증폭을 거치게 됩니다.
+              여기서 '메이플 용사'와 같은 버프 스킬은 장비 스탯%의 승수 작용에서 제외되고 순수 캐릭터 AP 스탯에만 독립적으로 반영되는 보정이 정교하게 구현되어 실제 인게임 스탯과 일치하는 흐름을 가집니다.
             </p>
           </article>
-          <article className="rounded-lg border border-border bg-muted/20 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-foreground">아이템 교체 효율</h3>
+          <article className="rounded-lg border border-border bg-slate-50/50 p-5">
+            <h3 className="mb-2 text-sm font-semibold text-foreground">2. 무기 상수 및 공격력% 적용 방식</h3>
             <p className="text-xs leading-6 text-muted-foreground">
-              모자, 한벌옷, 상의, 하의, 장갑, 신발, 무기, 방패, 장신구 슬롯별로 장착 중인 아이템과 비교 아이템을 계산합니다.
+              물리 직업군 스탯 공격력 산출 시 장비 슬롯의 공격력 합산은 무기와 비무기(장갑 등) 슬롯이 분리되어 흐릅니다.
+              공격력% 옵션은 오직 무기 자체의 공격력만을 타겟으로 증폭하며, 소비창 아이템(표창, 화살, 불릿 등)이나 방어구 공격력은 단순 합산됩니다. 
+              더불어 직업 무기군별 고유 속도와 밸런스를 조정한 무기 상수가 곱해져 정밀한 스공을 산출합니다.
             </p>
           </article>
-          <article className="rounded-lg border border-border bg-muted/20 p-4">
-            <h3 className="mb-2 text-sm font-semibold text-foreground">버프와 무기 반영</h3>
+          <article className="rounded-lg border border-border bg-slate-50/50 p-5">
+            <h3 className="mb-2 text-sm font-semibold text-foreground">3. 마법사 비선형 데미지 및 마력%</h3>
             <p className="text-xs leading-6 text-muted-foreground">
-              메이플 용사, 샤프 아이즈, 분노, 메디테이션, 표창, 불릿, 화살 공격력을 반영해 결과 편차를 줄입니다.
+              마법사의 데미지는 선형 비례를 따르지 않는 곡선형 가중치 모델이 적용됩니다. 
+              총마력의 제곱 비례 연산과 주스탯(INT)이 종합적으로 스킬 성능 계수와 융합되어 최종 기대 데미지를 구성합니다.
+              마력% 증가 옵션은 물리 직업군과 달리 스탯과 장비 마력을 합한 총마력 기본 베이스 전반을 대상으로 증폭되는 특징을 가집니다.
             </p>
           </article>
         </div>
 
-        <p className="text-xs leading-6 text-muted-foreground">
-          이 페이지는 메이플 플래닛 유저가 장비 선택을 돕기 위해 만든 비공식 도구입니다.
-          계산 결과는 입력값과 적용한 가정에 따라 달라질 수 있으므로 실제 게임 내 수치와 함께 확인해 주세요.
+        <div className="border-t border-border pt-5">
+          <h4 className="mb-2 text-sm font-semibold text-foreground">실질 데미지 및 스탯 환산(Stat Conversion) 판정</h4>
+          <p className="text-xs leading-6 text-muted-foreground">
+            단순 스공 표시를 넘어 크리티컬 확률과 크리 데미지가 기대값에 반영되며, 보스 몬스터 타격 시 적용되는 보공%와 총뎀%가 최종 데미지 기대율로 융합됩니다.
+            아이템의 효율 우열은 실전 보스 기대 데미지를 기준으로 자동 결정됩니다.
+          </p>
+          <p className="mt-3 text-xs leading-6 text-muted-foreground">
+            동적 스탯 환산의 경우 현재 사용자가 가진 스펙 환경(공격력, 마력, 보공 비율 등)을 기준으로 옵션 1단위 증가가 기대 데미지에 미치는 영향을 실시간 시뮬레이션합니다. 
+            그 후 해당 데미지 증가에 도달하기 위한 주스탯 필요량을 내부에서 수치 역산(이분 탐색 기법 등)으로 정밀 추적하므로 고정 공식 대비 월등히 정확한 실질 가치를 계산합니다.
+          </p>
+        </div>
+
+        <p className="text-[11px] leading-5 text-muted-foreground/80 bg-amber-50/50 border border-amber-100/50 rounded-lg p-3">
+          이 계산기는 메이플 플래닛 사용자의 편리한 템셋팅 비교를 지원하기 위한 비공식 시뮬레이터입니다.
+          모든 계산 공식과 흐름은 메이플 플래닛의 전투 물리 연산 기조를 논리적으로 따르고 있으나, 게임 내 직업별 스킬의 세부 보정 계수 및 상황적 조건에 따라 실제 결과와는 미세한 편차가 발생할 수 있습니다.
         </p>
       </div>
     </section>
